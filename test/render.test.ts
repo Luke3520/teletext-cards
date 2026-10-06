@@ -67,7 +67,10 @@ describe('cards', () => {
   it('animates the pipe nisse in layers, and keeps it still when asked', () => {
     const moving = CARDS.page(stats, { ...options, art: resolveArt('pipe-nisse') });
     assertWellFormed(moving.svg);
-    for (const cls of ['na nbl', 'na nblu', 'na nw', 'na ne', 'na np np1']) assert.ok(moving.svg.includes(`class="${cls}"`), cls);
+    for (const cls of ['na nbl', 'na nblu', 'na ne', 'na np np1']) assert.ok(moving.svg.includes(`class="${cls}"`), cls);
+    // No blinking or winking, and a brown pipe.
+    assert.doesNotMatch(moving.svg, /class="na nw"/);
+    assert.match(moving.svg, /fill="#a0522d"/);
     assert.match(moving.svg, /@keyframes np\{/);
     assert.match(moving.svg, /prefers-reduced-motion:reduce\)\{\.na\{animation:none!important\}/);
     // Smoke is one colour, so its fill sits on the animated group.
@@ -156,8 +159,9 @@ describe('layout helpers', () => {
     // Resting brows and one puff of smoke are part of the still picture.
     assert.equal(still[9]!.slice(4, 6), 'WW');
     assert.equal(still[10]!.slice(13, 15), 'WW');
-    // The wink and raised brows are not.
+    // Raised brows are not; the eyes stay open and the pipe is brown.
     assert.equal(still[10]!.slice(9, 11), 'KY');
+    assert.equal(still[13]!.slice(8, 15), 'NNNNNNN');
     assert.equal(still[8]!.slice(4, 6), 'YY');
   });
 });

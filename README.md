@@ -100,7 +100,7 @@ own layout:
 | `brand` | your login | Service name in the header row. |
 | `page_number` | `100` | Teletext page number, 100 to 899. |
 | `accent` | `blue` | Colour of the title band: `red`, `green`, `yellow`, `blue`, `magenta`, `cyan` or `white`. |
-| `art` | `none` | Mosaic pixel art next to the title. `nisse`, `pipe-nisse` (animated: smokes a pipe, winks and wiggles his eyebrows), or your own (see below). |
+| `art` | `none` | Mosaic pixel art next to the title. `nisse`, `pipe-nisse` (animated: smokes a pipe and wiggles his eyebrows), or your own (see below). |
 | `fastext` | | Up to four labels for the red, green, yellow and cyan keys at the bottom. |
 | `locale` | `en` | `en` or `da` (Danish). |
 | `timezone` | `UTC` | Time zone for the header clock, such as `Europe/Copenhagen`. |
@@ -116,7 +116,8 @@ own layout:
 ### Your own pixel art
 
 `art` takes rows of colour codes: `K` black, `R` red, `G` green, `Y` yellow,
-`B` blue, `M` magenta, `C` cyan, `W` white, `.` for empty. Each character is one
+`B` blue, `M` magenta, `C` cyan, `W` white, `.` for empty. Teletext had no
+brown, but pixel art may use `N` for it. Each character is one
 teletext mosaic pixel, so two across and three down make one character cell.
 
 ```yaml

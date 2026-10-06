@@ -1,6 +1,7 @@
 // Mosaic pixel art. One character per sextant pixel (two per cell across,
 // three per cell down). Letters are teletext colours: K black, R red,
-// G green, Y yellow, B blue, M magenta, C cyan, W white. Dots are transparent.
+// G green, Y yellow, B blue, M magenta, C cyan, W white, plus N brown, which
+// teletext never had. Dots are transparent.
 //
 // Art can come alive: layers are drawn over the base and switched on and off
 // (or moved) by CSS keyframes, in whole steps like a real teletext page.
@@ -40,9 +41,9 @@ export const NISSE: readonly string[] = [
 ];
 
 /**
- * The same nisse, a little bigger, with bushy brows and a pipe. Every six
- * seconds he winks and raises an eyebrow, then wiggles both; the pipe glows
- * and puffs smoke that drifts up through white, cyan and blue.
+ * The same nisse, a little bigger, with bushy brows and a brown pipe. Every
+ * six seconds he raises one eyebrow, then wiggles both; the pipe glows and
+ * puffs smoke that drifts up through white, cyan and blue.
  */
 const PIPE_NISSE_BASE: readonly string[] = [
   '................',
@@ -57,8 +58,8 @@ const PIPE_NISSE_BASE: readonly string[] = [
   '...YYYYYYYYY....',
   '...YYKYYYKYY....',
   '...YYYYRYYYY.RR.',
-  '..WWWWWWWWWWWYY.',
-  '..WWWWWWYYYYYYY.',
+  '..WWWWWWWWWWWNN.',
+  '..WWWWWWNNNNNNN.',
   '...WWWWWWWWW....',
   '....WWWWWWW.....',
   '......WWW.......',
@@ -87,7 +88,7 @@ function windows(name: string, loop: number, spans: Array<[number, number]>, ins
 }
 
 const LOOP = 6;
-const WINK: Array<[number, number]> = [[2, 2.7]];
+const FLIRT: Array<[number, number]> = [[2, 2.7]];
 const WIGGLE: Array<[number, number]> = [
   [3.6, 3.9],
   [4.2, 4.5],
@@ -101,8 +102,6 @@ const PIPE_NISSE: Art = {
     { className: 'na nbr', rest: true, lines: sprite([[9, 9, 'W'], [10, 9, 'W']]) },
     { className: 'na nblu', rest: false, lines: sprite([[4, 8, 'W'], [5, 8, 'W']]) },
     { className: 'na nbru', rest: false, lines: sprite([[9, 8, 'W'], [10, 8, 'W']]) },
-    // The wink: the right eye closes to a dash.
-    { className: 'na nw', rest: false, lines: sprite([[9, 10, 'K'], [10, 10, 'K']]) },
     // The ember glows when he draws on the pipe.
     { className: 'na ne', rest: false, lines: sprite([[13, 11, 'Y'], [14, 11, 'Y']]) },
     // Three puffs of smoke, a second apart.
@@ -111,18 +110,16 @@ const PIPE_NISSE: Art = {
     { className: 'na np np3', rest: false, lines: sprite([[14, 10, 'W']]) },
   ],
   css: [
-    '.nblu,.nbru,.nw,.ne,.np2,.np3{visibility:hidden}',
+    '.nblu,.nbru,.ne,.np2,.np3{visibility:hidden}',
     `.nbl{animation:nbl ${LOOP}s steps(1) infinite}`,
     `.nbr{animation:nbr ${LOOP}s steps(1) infinite}`,
     `.nblu{animation:nblu ${LOOP}s steps(1) infinite}`,
     `.nbru{animation:nbru ${LOOP}s steps(1) infinite}`,
-    `.nw{animation:nw ${LOOP}s steps(1) infinite}`,
-    // The left brow goes up with the wink; both go up for the wiggle.
-    windows('nbl', LOOP, [...WINK, ...WIGGLE], false),
-    windows('nblu', LOOP, [...WINK, ...WIGGLE], true),
+    // The left brow goes up on its own first; then both wiggle.
+    windows('nbl', LOOP, [...FLIRT, ...WIGGLE], false),
+    windows('nblu', LOOP, [...FLIRT, ...WIGGLE], true),
     windows('nbr', LOOP, WIGGLE, false),
     windows('nbru', LOOP, WIGGLE, true),
-    windows('nw', LOOP, WINK, true),
     '.ne{animation:ne 1s steps(1) infinite}@keyframes ne{0%{visibility:visible}25%{visibility:hidden}100%{visibility:hidden}}',
     // Smoke rises in whole steps and cools from white to cyan to blue.
     '.np{animation:np 3s steps(1) infinite}.np2{animation-delay:-1s}.np3{animation-delay:-2s}',
