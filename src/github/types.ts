@@ -60,6 +60,8 @@ export interface RepoDetail extends RepoRef {
    * authored, so work done upstream is not counted twice. Null for empty repos.
    */
   commits: { total: number; authored: number } | null;
+  /** When the user's latest commit on the default branch landed (for a fork: since forking). */
+  lastCommitAt?: string | null;
 }
 
 export interface RawData {

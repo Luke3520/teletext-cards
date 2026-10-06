@@ -35,6 +35,20 @@ export interface LanguageShare {
   share: number;
 }
 
+/** A repository with recent commits by the user. */
+export interface RecentRepo {
+  /**
+   * What to call it: the name for your own public repos, owner/name for
+   * others' (with the owner's label from `orgs`, if it has one). For a private
+   * repo, only its organisation's name, and only when that organisation is
+   * pinned in `orgs`; otherwise null.
+   */
+  label: string | null;
+  private: boolean;
+  /** When the user's latest commit there landed. */
+  at: string;
+}
+
 export interface OrgSummary {
   login: string;
   /** Shown instead of the login, if set. */
@@ -103,6 +117,17 @@ export interface Stats {
   longestStreak: number;
   /** Contributions per week for the last 52 weeks, oldest first. */
   weeks: number[];
+  /**
+   * Contributions in the last 7 days: today and the 6 days before it, or, while
+   * today is still empty, the 7 days before today.
+   */
+  last7Days: number;
+  /** An ordinary week: the average of up to 12 weeks before those 7 days. Null for a new account. */
+  usualWeek: number | null;
+  /** The last 7 days against an ordinary week, if there is one to compare with. */
+  weekTrend: 'up' | 'down' | 'flat' | null;
+  /** Repositories with the user's latest commits, newest first. */
+  recentWork: RecentRepo[];
 }
 
 const DAY = 86_400_000;
@@ -213,6 +238,34 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
   ];
   const anonymous = [...orgs].filter(([orgLogin, o]) => !o.public && shown(orgLogin)).length;
 
+  // Latest commits, newest first. The profile repository itself is left out:
+  // its commits are mostly README edits.
+  const labels = new Map(display.pin.map((p) => [p.login.toLowerCase(), p.label ?? p.login]));
+  // Private repositories go by their organisation's name if it is pinned,
+  // else just "private": several of them in a row would say nothing new, so
+  // each such name appears once.
+  const seen = new Set<string>();
+  const recentWork: RecentRepo[] = raw.repos
+    .filter((r) => r.lastCommitAt && !excluded(r.nameWithOwner) && r.nameWithOwner.toLowerCase() !== `${lower}/${lower}`)
+    .filter((r) => !hidden.has(r.owner.login.toLowerCase()))
+    .sort((a, b) => Date.parse(b.lastCommitAt!) - Date.parse(a.lastCommitAt!) || a.nameWithOwner.localeCompare(b.nameWithOwner))
+    .map((r) => {
+      const owner = r.owner.login.toLowerCase();
+      const name = r.nameWithOwner.split('/')[1]!;
+      const label = r.isPrivate
+        ? (labels.get(owner) ?? null)
+        : owner === lower
+          ? name
+          : `${labels.get(owner) ?? r.owner.login}/${name}`;
+      return { label, private: r.isPrivate, at: r.lastCommitAt! };
+    })
+    .filter((r) => {
+      const key = `${r.private}:${r.label ?? ''}`.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
   // Streaks and the weekly graph, day by day from account creation to today.
   const today = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate());
   const created = new Date(raw.user.createdAt);
@@ -239,6 +292,25 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
   }
   let lastYear = 0;
   for (let d = 0; d < 365; d++) lastYear += countOn(today - d * DAY);
+
+  // The last 7 days against an ordinary week: the 12 weeks before them, or
+  // as many as the account is old. Like the streak, today only counts once
+  // something happened in it, so an early-morning run compares 7 whole days.
+  const end = countOn(today) > 0 ? today : today - DAY;
+  let last7Days = 0;
+  for (let d = 0; d < 7; d++) last7Days += countOn(end - d * DAY);
+  const history = Math.min(12, Math.floor((end - 6 * DAY - born) / (7 * DAY)));
+  let before = 0;
+  for (let d = 7; d < 7 + history * 7; d++) before += countOn(end - d * DAY);
+  const usualWeek = history > 0 ? before / history : null;
+  const weekTrend =
+    usualWeek === null || (usualWeek === 0 && last7Days === 0)
+      ? null
+      : last7Days > usualWeek * 1.25
+        ? 'up'
+        : last7Days < usualWeek * 0.75
+          ? 'down'
+          : 'flat';
 
   const owned = raw.ownedRepos.filter((r) => !excluded(r.nameWithOwner));
   const included = raw.repos.filter((r) => !excluded(r.nameWithOwner));
@@ -272,6 +344,10 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
     currentStreak: current,
     longestStreak: longest,
     weeks,
+    last7Days,
+    usualWeek,
+    weekTrend,
+    recentWork,
   };
 }
 

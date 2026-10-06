@@ -64,7 +64,7 @@ inputs:
     description: Choose the organisations on the ORGS line, comma separated. `name` shows it first (even a private one), `name=Label` also renames it, `-name` hides it. The rest follow, busiest first.
     default: ''
   hide:
-    description: Parts of the page and stats cards to leave out, comma separated. since, contributions, commits, pull_requests, reviews, repositories, orgs, languages, activity.
+    description: Parts of the page and stats cards to leave out, comma separated. since, contributions, last_7_days, streak, commits, pull_requests, reviews, repositories, orgs, languages, recent (recent work, on the page), activity (the 52-week graph, on the stats card).
     default: ''
   exclude_repos:
     description: Repositories to leave out, comma separated. owner/name or owner/*.

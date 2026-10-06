@@ -51,6 +51,7 @@ describe('parseSettings', () => {
   it('reads which parts to hide, with friendly aliases', () => {
     assert.deepEqual(parseHide('orgs, 52 weeks'.replace('52 weeks', 'weeks')), ['orgs', 'activity']);
     assert.deepEqual(parseHide('PRs, repos, pull-requests, Since'), ['pull_requests', 'repositories', 'pull_requests', 'since']);
+    assert.deepEqual(parseHide('this week, streaks, recent-work, last_7_days'), ['last_7_days', 'streak', 'recent', 'last_7_days']);
     assert.deepEqual(parseHide(''), []);
     assert.throws(() => parseHide('stars'), /unknown part "stars"/);
     assert.deepEqual(parseSettings(from({ username: 'x', hide: 'orgs' })).card.hide, ['orgs']);

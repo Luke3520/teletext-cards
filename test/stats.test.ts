@@ -185,6 +185,55 @@ describe('computeStats', () => {
   it('sums stars of owned repositories', () => {
     assert.equal(computeStats(raw([])).stars, 3);
   });
+
+  it('compares the last 7 days with an ordinary week', () => {
+    const days = (from: string, to: string, count: number): Array<[string, number]> => {
+      const out: Array<[string, number]> = [];
+      for (let t = Date.parse(`${from}T00:00:00Z`); t <= Date.parse(`${to}T00:00:00Z`); t += 86_400_000) {
+        out.push([new Date(t).toISOString().slice(0, 10), count]);
+      }
+      return out;
+    };
+    const span = (list: Array<[string, number]>) => raw([window('2026-09-01T00:00:00Z', '2026-10-06T12:00:00Z', list)]);
+    // Today is still empty, so the week is the 7 days before it. The account
+    // is five weeks old: four whole weeks to compare with.
+    const busy = computeStats(span([...days('2026-09-01', '2026-09-28', 1), ...days('2026-09-29', '2026-10-05', 3)]));
+    assert.equal(busy.last7Days, 21);
+    assert.equal(busy.usualWeek, 7);
+    assert.equal(busy.weekTrend, 'up');
+    // Once something happens today, today counts.
+    const steady = computeStats(span(days('2026-09-01', '2026-10-06', 1)));
+    assert.equal(steady.last7Days, 7);
+    assert.equal(steady.weekTrend, 'flat');
+    const quiet = computeStats(span(days('2026-09-01', '2026-09-28', 2)));
+    assert.equal(quiet.last7Days, 0);
+    assert.equal(quiet.weekTrend, 'down');
+    // A new account has no ordinary week yet.
+    const base = raw([]);
+    const fresh = computeStats({ ...base, user: { ...base.user, createdAt: '2026-10-01T00:00:00Z' } });
+    assert.equal(fresh.usualWeek, null);
+    assert.equal(fresh.weekTrend, null);
+  });
+
+  it('lists recent work newest first, leaving out the profile repository', () => {
+    const stats = computeStats(demo);
+    // teletext-demo/teletext-demo has the newest commit, but it is the README.
+    assert.deepEqual(stats.recentWork.slice(0, 3).map((r) => r.label), ['fjord-tracker', 'nordlys-labs/aurora-api', null]);
+    assert.equal(stats.recentWork[2]!.private, true);
+    assert.ok(!stats.recentWork.some((r) => r.label?.includes('teletext-demo')));
+    // A pinned organisation lends its name to its private repositories; a hidden one drops out.
+    const named = computeStats(demo, { orgs: { pin: [{ login: 'secret-co', label: 'Secret Co' }], hide: ['nordlys-labs'] } });
+    assert.deepEqual(named.recentWork.slice(0, 3).map((r) => r.label), ['fjord-tracker', 'Secret Co', 'kbh-hackers/cykelsti']);
+  });
+
+  it('never names a private repository in recent work, and mentions them once', () => {
+    const secret = (name: string, at: string): RepoDetail => ({ ...repo(name, [], 1, 1), isPrivate: true, lastCommitAt: at });
+    const stats = computeStats(
+      raw([], [secret('acme/billing', '2026-10-05T10:00:00Z'), secret('acme/payroll', '2026-10-04T10:00:00Z'), { ...repo('me/solo', [], 1, 1), lastCommitAt: '2026-10-03T10:00:00Z' }]),
+    );
+    assert.deepEqual(stats.recentWork.map((r) => r.label), [null, 'solo']);
+    assert.ok(!JSON.stringify(stats.recentWork).match(/billing|payroll|acme/));
+  });
 });
 
 describe('languageShares', () => {

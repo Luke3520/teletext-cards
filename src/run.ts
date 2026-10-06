@@ -87,6 +87,20 @@ export async function run(settings: Settings, options: RunOptions = {}): Promise
   if (stats.unmatchedOrgs.length) {
     log(`warning: orgs lists ${stats.unmatchedOrgs.join(', ')}, but you have no contributions there that this token can see`);
   }
+  log(
+    `last 7 days: ${stats.last7Days} contributions` +
+      (stats.usualWeek === null ? '' : ` (an ordinary week: ${stats.usualWeek.toFixed(1)}, ${stats.weekTrend})`) +
+      `; streak ${stats.currentStreak} days, best ${stats.longestStreak}`,
+  );
+  // Same names as on the card: private repositories stay unnamed here too.
+  log(
+    `recent work: ${
+      stats.recentWork
+        .slice(0, 3)
+        .map((r) => `${r.label ?? 'a private repo'}${r.private && r.label ? ' (private)' : ''} ${r.at.slice(0, 10)}`)
+        .join(', ') || 'none'
+    }`,
+  );
   log(`languages by ${stats.languagesBy}: ${stats.languages.map((l) => `${l.name} ${(l.share * 100).toFixed(1)}%`).join(', ') || 'none'}`);
   log(`languages come from: ${originText(stats)}`);
   log(`biggest language sources: ${sourcesText(stats)}`);

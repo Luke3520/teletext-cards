@@ -5,7 +5,7 @@ import { NISSE, artSize, resolveArt, stillArt } from '../src/cards/art.ts';
 import { fit, packList, percentages } from '../src/cards/common.ts';
 import { CARDS } from '../src/cards/page.ts';
 import type { RawData } from '../src/github/types.ts';
-import { clock, strings } from '../src/i18n.ts';
+import { clock, daysBetween, strings } from '../src/i18n.ts';
 import { computeStats } from '../src/stats.ts';
 import { Screen } from '../src/teletext/screen.ts';
 import { renderSVG } from '../src/teletext/svg.ts';
@@ -53,15 +53,29 @@ describe('cards', () => {
 
   it('leaves out hidden parts without leaving gaps', () => {
     const full = CARDS.page(stats, options);
-    const lean = CARDS.page(stats, { ...options, hide: ['commits', 'orgs', 'activity', 'since'] });
-    assert.doesNotMatch(lean.alt, /commits|Organisations|52 weeks/);
-    assert.match(lean.alt, /contributions, \d+ pull requests/);
+    const lean = CARDS.page(stats, { ...options, hide: ['commits', 'orgs', 'recent', 'since'] });
+    assert.doesNotMatch(lean.alt, /commits|Organisations|Recent work/);
+    assert.match(lean.alt, /contributions, \d+ contributions in the last 7 days/);
     const height = (svg: string) => Number(/height="(\d+)"/.exec(svg)![1]);
-    // One number row, three org rows, and the graph with its gap: 7 rows of 20px.
-    // (The since line sits beside the nisse, which is taller, so it saves nothing.)
-    assert.equal(height(full.svg) - height(lean.svg), 7 * 20);
-    const bare = CARDS.stats(stats, { ...options, hide: ['contributions', 'commits', 'pull_requests', 'reviews', 'repositories', 'orgs'] });
+    // One number row, three org rows, and recent work (a band and three rows)
+    // with its gap: 9 rows of 20px. (The since line sits beside the nisse,
+    // which is taller, so it saves nothing.)
+    assert.equal(height(full.svg) - height(lean.svg), 9 * 20);
+    const bare = CARDS.stats(stats, {
+      ...options,
+      hide: ['contributions', 'last_7_days', 'streak', 'commits', 'pull_requests', 'reviews', 'repositories', 'orgs'],
+    });
     assert.match(bare.alt, /^\d+ contributions in the last 52 weeks$/);
+  });
+
+  it('shows the pulse and recent work, and leaves the year to the stats card', () => {
+    const page = CARDS.page(stats, options);
+    assert.match(page.alt, /\d+ contributions in the last 7 days \(\d+ in an ordinary week\), a streak of \d+ days? \(best \d+\)/);
+    assert.match(page.alt, /Recent work: fjord-tracker yesterday, nordlys-labs\/aurora-api 2 days ago, a private repository 4 days ago$/);
+    assert.doesNotMatch(page.alt, /52 weeks|internal-billing|secret-co/);
+    assert.match(CARDS.stats(stats, options).alt, /contributions in the last 52 weeks$/);
+    const named = computeStats(demo, { orgs: { pin: [{ login: 'secret-co', label: 'Secret Co' }], hide: [] } });
+    assert.match(CARDS.page(named, options).alt, /a private Secret Co repository 4 days ago$/);
   });
 
   it('animates the pipe nisse in layers, and keeps it still when asked', () => {
@@ -144,6 +158,19 @@ describe('layout helpers', () => {
     const at = new Date('2026-10-06T22:30:00Z');
     assert.deepEqual(clock(at, 'Europe/Copenhagen', strings('da')), { date: 'ons 07 okt', time: '00:30' });
     assert.deepEqual(clock(at, 'UTC', strings('en')), { date: 'Tue 06 Oct', time: '22:30' });
+  });
+
+  it('counts days ago in the chosen time zone', () => {
+    const now = new Date('2026-10-06T04:17:00Z');
+    // Half past midnight in Copenhagen, still the evening before in UTC.
+    const late = new Date('2026-10-05T22:30:00Z');
+    assert.equal(daysBetween(late, now, 'Europe/Copenhagen'), 0);
+    assert.equal(daysBetween(late, now, 'UTC'), 1);
+    assert.deepEqual(
+      [0, 1, 4, 20, 90, 400, 800].map((d) => strings('en').ago(d)),
+      ['today', 'yesterday', '4 days ago', '2 weeks ago', '3 months ago', 'a year ago', '2 years ago'],
+    );
+    assert.deepEqual([1, 3].map((d) => strings('da').ago(d)), ['i går', 'for 3 dage siden']);
   });
 
   it('reads built-in and custom pixel art', () => {

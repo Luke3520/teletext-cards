@@ -60,6 +60,10 @@ const PART_ALIASES: Readonly<Record<string, Part>> = {
   organisations: 'orgs',
   organizations: 'orgs',
   langs: 'languages',
+  thisweek: 'last_7_days',
+  '7days': 'last_7_days',
+  streaks: 'streak',
+  recentwork: 'recent',
   weeks: 'activity',
   graph: 'activity',
 };

@@ -89,7 +89,7 @@ ${REF}`;
 const DETAIL = `fragment Detail on Repository {
   nameWithOwner isPrivate isFork stargazerCount owner { __typename login }
   languages(first: 25, orderBy: { field: SIZE, direction: DESC }) { totalSize edges { size node { name color } } }
-  defaultBranchRef { target { ... on Commit { history { totalCount } authored: history(author: { id: $uid }) { totalCount } } } }
+  defaultBranchRef { target { ... on Commit { history { totalCount } authored: history(author: { id: $uid }, first: 1) { totalCount nodes { committedDate } } } } }
 }`;
 
 interface ProfileData {
@@ -124,7 +124,11 @@ interface PullRequestsData {
 
 type DetailNode = Omit<RepoDetail, 'commits'> & {
   defaultBranchRef: {
-    target: { history?: { totalCount: number }; authored?: { totalCount: number }; sinceFork?: { totalCount: number } } | null;
+    target: {
+      history?: { totalCount: number };
+      authored?: { totalCount: number; nodes?: Array<{ committedDate: string }> };
+      sinceFork?: { totalCount: number; nodes?: Array<{ committedDate: string }> };
+    } | null;
   } | null;
 };
 
@@ -277,7 +281,7 @@ async function fetchDetails(client: GitHubClient, userId: string, refs: RepoRef[
         // In a fork, only commits since the fork are new work.
         const sinceFork =
           ref.isFork && ref.createdAt
-            ? ` defaultBranchRef { target { ... on Commit { sinceFork: history(author: { id: $uid }, since: ${JSON.stringify(ref.createdAt)}) { totalCount } } } }`
+            ? ` defaultBranchRef { target { ... on Commit { sinceFork: history(author: { id: $uid }, since: ${JSON.stringify(ref.createdAt)}, first: 1) { totalCount nodes { committedDate } } } } }`
             : '';
         return `r${k}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(repo)}) { ...Detail${sinceFork} }`;
       })
@@ -288,11 +292,13 @@ async function fetchDetails(client: GitHubClient, userId: string, refs: RepoRef[
       if (!node) return; // deleted, renamed or no longer visible to this token
       const { defaultBranchRef, ...rest } = node;
       const target = defaultBranchRef?.target;
-      const authored = (rest.isFork ? target?.sinceFork : target?.authored)?.totalCount ?? 0;
+      const mine = rest.isFork ? target?.sinceFork : target?.authored;
+      const authored = mine?.totalCount ?? 0;
       out.push({
         ...rest,
         createdAt: batch[k]!.createdAt,
         commits: target?.history ? { total: target.history.totalCount, authored } : null,
+        lastCommitAt: mine?.nodes?.[0]?.committedDate ?? null,
       });
     });
   }

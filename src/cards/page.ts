@@ -11,7 +11,7 @@ import { NO_ART, artSize, stillArt } from './art.ts';
 import type { Card, CardOptions, Part } from './common.ts';
 import { fit, header } from './common.ts';
 import type { Section } from './sections.ts';
-import { activity, band, fastext, languages, numbers, organisations } from './sections.ts';
+import { activity, band, fastext, languages, numbers, organisations, recent } from './sections.ts';
 
 /** Text colour that reads well on a band of the given colour. */
 function onBand(colour: Colour): Colour {
@@ -91,7 +91,9 @@ export function pageCard(stats: Stats, options: CardOptions): Card {
   const body = stack(row, [
     (r) => numbersAndOrgs(screen, r, stats, s, hide, 3),
     (r) => (hide.has('languages') ? { row: r, alt: '' } : languages(screen, r, stats, s)),
-    (r) => (hide.has('activity') ? { row: r, alt: '' } : activity(screen, r, stats, s)),
+    // What you are working on now. GitHub already shows the year at a glance
+    // further down the profile, so the page leaves the 52 weeks to the stats card.
+    (r) => (hide.has('recent') ? { row: r, alt: '' } : recent(screen, r, stats, s, options.timeZone)),
   ]);
   row = body.row;
   if (options.fastext?.length) row = fastext(screen, row + 1, options.fastext);

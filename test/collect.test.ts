@@ -123,7 +123,13 @@ describe('collect', () => {
                   nameWithOwner: full, isPrivate: false, isFork: full === 'team/tests', stargazerCount: 0,
                   owner: { __typename: m[2] === 'me' ? 'User' : 'Organization', login: m[2] },
                   languages: { totalSize: 10, edges: [{ size: 10, node: { name: 'Go', color: null } }] },
-                  defaultBranchRef: { target: { history: { totalCount: 4 }, authored: { totalCount: 2 }, sinceFork: { totalCount: 1 } } },
+                  defaultBranchRef: {
+                    target: {
+                      history: { totalCount: 4 },
+                      authored: full === 'me/one' ? { totalCount: 0, nodes: [] } : { totalCount: 2, nodes: [{ committedDate: '2026-09-30T10:00:00Z' }] },
+                      sinceFork: { totalCount: 1, nodes: [{ committedDate: '2026-10-02T08:00:00Z' }] },
+                    },
+                  },
                 };
         }
         return out;
@@ -147,7 +153,12 @@ describe('collect', () => {
       { repository: { nameWithOwner: 'team/tests', isPrivate: false, isFork: true, createdAt: '2026-02-01T00:00:00Z', owner: { __typename: 'Organization', login: 'team' } }, pullRequests: 2 },
     ]);
     assert.deepEqual(data.repos.find((r) => r.nameWithOwner === 'team/tests')!.commits, { total: 4, authored: 1 });
-    assert.match(reposQuery, /sinceFork: history\(author: \{ id: \$uid \}, since: "2026-02-01T00:00:00Z"\)/);
+    assert.match(reposQuery, /sinceFork: history\(author: \{ id: \$uid \}, since: "2026-02-01T00:00:00Z", first: 1\)/);
+    // When your latest commit landed: in a fork, your latest since forking.
+    const last = (name: string) => data.repos.find((r) => r.nameWithOwner === name)!.lastCommitAt;
+    assert.equal(last('acme/api'), '2026-09-30T10:00:00Z');
+    assert.equal(last('team/tests'), '2026-10-02T08:00:00Z');
+    assert.equal(last('me/one'), null);
   });
 
   it('carries on when the access check fails', async () => {

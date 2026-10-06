@@ -2,6 +2,7 @@
 // the next free row plus a plain-text line for the alt text.
 
 import type { Strings } from '../i18n.ts';
+import { daysBetween } from '../i18n.ts';
 import type { Stats } from '../stats.ts';
 import type { Colour } from '../teletext/palette.ts';
 import type { Screen } from '../teletext/screen.ts';
@@ -14,26 +15,43 @@ export interface Section {
 }
 
 const LEADER = { label: 'cyan', dots: 'blue', value: 'white', extra: 'yellow' } as const;
+const RECENT = { label: 'white', dots: 'blue', value: 'cyan' } as const;
 
 /** The headline numbers, one per row, minus any the user hid. */
 export function numbers(screen: Screen, row: number, stats: Stats, s: Strings, hide: ReadonlySet<Part> = new Set()): Section {
   const end = screen.cols - 1;
   const alt: string[] = [];
-  const line = (part: Part, label: string, value: number, said: string, extra = '') => {
+  const line = (part: Part, label: string, value: string, said: string, extra = '') => {
     if (hide.has(part)) return;
-    leader(screen, row++, 1, end, label, num(value, s), LEADER, extra);
+    leader(screen, row++, 1, end, label, value, LEADER, extra);
     alt.push(said);
   };
   const merged = num(stats.mergedPullRequests, s);
   const others = stats.contributedReposNotOwned;
-  line('contributions', s.contributions, stats.contributions, `${num(stats.contributions, s)} contributions`);
-  line('commits', s.commits, stats.commits, `${num(stats.commits, s)} commits`);
-  line('pull_requests', s.pullRequests, stats.pullRequests, `${num(stats.pullRequests, s)} pull requests (${merged} merged)`, `${merged} ${s.merged}`);
-  line('reviews', s.reviews, stats.reviews, `${num(stats.reviews, s)} code reviews`);
+  const usual = stats.usualWeek === null ? '' : ` (${Math.round(stats.usualWeek)} in an ordinary week)`;
+  line('contributions', s.contributions, num(stats.contributions, s), `${num(stats.contributions, s)} contributions`);
+  // The pulse: how the last week went, and how many days in a row.
+  line(
+    'last_7_days',
+    s.last7Days,
+    num(stats.last7Days, s),
+    `${num(stats.last7Days, s)} contributions in the last 7 days${usual}`,
+    stats.weekTrend ? s.trend[stats.weekTrend] : '',
+  );
+  line(
+    'streak',
+    s.streak,
+    s.days(stats.currentStreak),
+    `a streak of ${stats.currentStreak} ${stats.currentStreak === 1 ? 'day' : 'days'} (best ${stats.longestStreak})`,
+    `${s.best} ${num(stats.longestStreak, s)}`,
+  );
+  line('commits', s.commits, num(stats.commits, s), `${num(stats.commits, s)} commits`);
+  line('pull_requests', s.pullRequests, num(stats.pullRequests, s), `${num(stats.pullRequests, s)} pull requests (${merged} merged)`, `${merged} ${s.merged}`);
+  line('reviews', s.reviews, num(stats.reviews, s), `${num(stats.reviews, s)} code reviews`);
   line(
     'repositories',
     s.repos,
-    stats.repos,
+    num(stats.repos, s),
     `${num(stats.repos, s)} repositories` + (others ? ` (${num(others, s)} owned by organisations or teammates)` : ''),
     others ? `${num(others, s)} ${s.notOwned}` : '',
   );
@@ -92,6 +110,35 @@ export function languages(screen: Screen, row: number, stats: Stats, s: Strings)
     row++;
   });
   return { row, alt: `Languages, ${s.languagesBy[stats.languagesBy]}: ${stats.languages.map((l, i) => `${l.name} ${pct[i]}%`).join(', ')}` };
+}
+
+/**
+ * The repositories with the user's latest commits, and how long ago, counted
+ * in calendar days where the user lives. Private ones are never named.
+ */
+export function recent(screen: Screen, row: number, stats: Stats, s: Strings, timeZone: string, count = 3): Section {
+  const items = stats.recentWork.slice(0, count);
+  if (!items.length) return { row, alt: '' };
+  row = band(screen, row, s.recent, s.lastCommit);
+  const now = new Date(stats.generatedAt);
+  const end = screen.cols - 1;
+  const said = items.map((item) => {
+    const when = s.ago(daysBetween(new Date(item.at), now, timeZone));
+    const tag = item.private && item.label ? ` · ${s.private}` : '';
+    const name = fit(item.label ?? s.privateRepo, Math.max(1, end - 3 - len(when) - len(tag)));
+    leader(screen, row, 1, end, name + tag, when, RECENT);
+    // Private work is magenta, like the private organisations.
+    if (tag) {
+      screen.text(1 + len(name), row, ' · ', { fg: 'blue' });
+      screen.text(1 + len(name) + 3, row, s.private, { fg: 'magenta' });
+    } else if (item.private) {
+      screen.text(1, row, name, { fg: 'magenta' });
+    }
+    row++;
+    const what = item.private ? (item.label ? `a private ${item.label} repository` : 'a private repository') : item.label!;
+    return `${what} ${when}`;
+  });
+  return { row, alt: `Recent work: ${said.join(', ')}` };
 }
 
 /**

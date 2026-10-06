@@ -8,7 +8,20 @@ import type { Screen } from '../teletext/screen.ts';
 import type { Stats } from '../stats.ts';
 
 /** Parts of the page and stats cards that `hide` can switch off. */
-export const PARTS = ['since', 'contributions', 'commits', 'pull_requests', 'reviews', 'repositories', 'orgs', 'languages', 'activity'] as const;
+export const PARTS = [
+  'since',
+  'contributions',
+  'last_7_days',
+  'streak',
+  'commits',
+  'pull_requests',
+  'reviews',
+  'repositories',
+  'orgs',
+  'languages',
+  'recent',
+  'activity',
+] as const;
 export type Part = (typeof PARTS)[number];
 
 export interface CardOptions {

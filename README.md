@@ -79,8 +79,8 @@ Run it once from the **Actions** tab, then put the page in your `README.md`:
      alt="My GitHub stats as a teletext page" width="100%">
 ```
 
-`stats.svg` and `languages.svg` are there too, if you would rather build your
-own layout:
+`stats.svg` (the numbers, with a 52-week graph) and `languages.svg` are there
+too, if you would rather build your own layout:
 
 ![Stats card](examples/stats.svg)
 ![Languages card](examples/languages.svg)
@@ -107,7 +107,7 @@ own layout:
 | `languages_by` | `authorship` | `authorship`, `commits` or `bytes` (the classic method). |
 | `languages_count` | `5` | Languages listed before the rest become *Other*. |
 | `orgs` | | Choose the ORGS line, comma separated. `name` shows that organisation first (even a private one), `name=Label` renames it too, `-name` hides it. The rest follow, busiest first. |
-| `hide` | | Parts to leave out, comma separated: `since`, `contributions`, `commits`, `pull_requests`, `reviews`, `repositories`, `orgs`, `languages`, `activity`. Everything shows unless you hide it. |
+| `hide` | | Parts to leave out, comma separated: `since`, `contributions`, `last_7_days`, `streak`, `commits`, `pull_requests`, `reviews`, `repositories`, `orgs`, `languages`, `recent` (recent work, on the page), `activity` (the 52-week graph, on the stats card). Everything shows unless you hide it. |
 | `exclude_repos` | | `owner/name` or `owner/*`, comma separated. |
 | `exclude_languages` | | Language names, comma separated. |
 | `animate` | `true` | The page arrives row by row and the clock blinks. Off for anyone who prefers reduced motion. |
@@ -135,12 +135,15 @@ art: |
 | On the card | Where it comes from |
 |---|---|
 | Contributions | Every day in your contribution calendars since you joined, so it matches your profile graph. Includes anonymous private contributions if you show them on your profile. |
+| Last 7 days | Your contributions today and in the 6 days before. Until you have done something today, the 7 days before today, so a morning run compares whole days. Compared with an ordinary week: the average of the 12 weeks before (fewer for a new account). More than a quarter above or below it is *more* or *less than usual*. |
+| Streak | Days in a row with a contribution, up to today (an empty today does not break it yet), and the longest run since you joined. |
 | Commits, code reviews | Summed from each yearly contributions collection. |
 | Pull requests | All pull requests you opened, and how many were merged. |
 | Repositories | Repositories you own or contributed to, each counted once, including forks you opened pull requests in. *org/team* is how many belong to an organisation or another person. |
 | Orgs | Organisations owning a public repository you contributed to, busiest first. |
 | Languages | See `languages_by` above. In a fork, only commits made after forking count, so upstream code is not counted twice. |
-| 52 weeks | Your contributions per week over the last year, one mosaic column per week, on a square-root scale so quiet weeks still show next to a busy one. |
+| Recent work | The three repositories with your latest commits on their default branch, and how many days ago in your `timezone`. Your profile repository is left out. A private repository shows as *private repo*, or as its organisation's name if you list that organisation in `orgs`. |
+| 52 weeks | On the stats card: your contributions per week over the last year, one mosaic column per week, on a square-root scale so quiet weeks still show next to a busy one. The page leaves this out, because GitHub already shows your contribution graph further down your profile. |
 
 GitHub only counts a commit as yours if its author email is linked to your
 account. If old commits are missing, add that email under
@@ -160,9 +163,10 @@ repositories, create a classic personal access token with the `repo` and
     publish_branch: output
 ```
 
-Private repositories then count towards the numbers and languages. Their names,
-and the names of organisations you only know privately, never appear on a card,
-unless you list such an organisation in `orgs`.
+Private repositories then count towards the numbers and languages, and show up
+in recent work as *private repo*. Their names, and the names of organisations
+you only know privately, never appear on a card or in the logs, unless you list
+such an organisation in `orgs`.
 
 GitHub's contribution data sometimes hides private work even from your own
 token: it shows up only as an anonymous count. When that happens, the action

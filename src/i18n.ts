@@ -26,6 +26,13 @@ export interface Strings {
   best: string;
   since: (year: number) => string;
   noLanguages: string;
+  last7Days: string;
+  trend: { up: string; down: string; flat: string };
+  recent: string;
+  lastCommit: string;
+  private: string;
+  privateRepo: string;
+  ago: (days: number) => string;
 }
 
 export const STRINGS: Readonly<Record<Locale, Strings>> = {
@@ -52,6 +59,21 @@ export const STRINGS: Readonly<Record<Locale, Strings>> = {
     best: 'best',
     since: (year) => `on GitHub since ${year}`,
     noLanguages: 'No code yet',
+    last7Days: 'LAST 7 DAYS',
+    trend: { up: '↑ more than usual', down: '↓ less than usual', flat: '→ as usual' },
+    recent: 'RECENT WORK',
+    lastCommit: 'last commit',
+    private: 'private',
+    privateRepo: 'private repo',
+    ago: (d) => {
+      if (d <= 0) return 'today';
+      if (d === 1) return 'yesterday';
+      if (d < 14) return `${d} days ago`;
+      if (d < 60) return `${Math.floor(d / 7)} weeks ago`;
+      if (d < 365) return `${Math.floor(d / 30)} months ago`;
+      const y = Math.floor(d / 365);
+      return y === 1 ? 'a year ago' : `${y} years ago`;
+    },
   },
   da: {
     numberLocale: 'da-DK',
@@ -76,6 +98,21 @@ export const STRINGS: Readonly<Record<Locale, Strings>> = {
     best: 'bedst',
     since: (year) => `på GitHub siden ${year}`,
     noLanguages: 'Ingen kode endnu',
+    last7Days: 'SIDSTE 7 DAGE',
+    trend: { up: '↑ over normalt', down: '↓ under normalt', flat: '→ som normalt' },
+    recent: 'SENESTE ARBEJDE',
+    lastCommit: 'seneste commit',
+    private: 'privat',
+    privateRepo: 'privat repo',
+    ago: (d) => {
+      if (d <= 0) return 'i dag';
+      if (d === 1) return 'i går';
+      if (d < 14) return `for ${d} dage siden`;
+      if (d < 60) return `for ${Math.floor(d / 7)} uger siden`;
+      if (d < 365) return `for ${Math.floor(d / 30)} mdr. siden`;
+      const y = Math.floor(d / 365);
+      return y === 1 ? 'for et år siden' : `for ${y} år siden`;
+    },
   },
 };
 
@@ -85,6 +122,19 @@ export function strings(locale: string): Strings {
 
 export function formatNumber(value: number, s: Strings): string {
   return new Intl.NumberFormat(s.numberLocale).format(value);
+}
+
+/** Whole calendar days from `from` to `to`, counted in a time zone. */
+export function daysBetween(from: Date, to: Date, timeZone: string): number {
+  const day = (d: Date) => {
+    const p = Object.fromEntries(
+      new Intl.DateTimeFormat('en-GB', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric' })
+        .formatToParts(d)
+        .map((x) => [x.type, x.value]),
+    );
+    return Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)) / 86_400_000;
+  };
+  return day(to) - day(from);
 }
 
 /** Date and time parts in a time zone, e.g. ["Tue 06 Oct", "21:37"]. */
