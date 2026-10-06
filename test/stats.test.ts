@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import type { ContributionWindow, RawData, RepoDetail, RepoRef } from '../src/github/types.ts';
-import { computeStats, languageShares } from '../src/stats.ts';
+import { computeStats, languageShares, languageSources } from '../src/stats.ts';
 
 const demo = JSON.parse(readFileSync(new URL('./fixtures/demo.json', import.meta.url), 'utf8')) as RawData;
 
@@ -86,6 +86,13 @@ describe('computeStats', () => {
     const stats = computeStats(demo);
     assert.equal(stats.privateOrgs, 1);
     assert.ok(!JSON.stringify(stats).includes('secret-co'));
+  });
+
+  it('counts org and team repositories in the language mix', () => {
+    const { languageOrigin: o } = computeStats(demo);
+    assert.ok(o.org > 0.3, `org share ${o.org}`);
+    assert.ok(o.own > 0 && o.person > 0 && o.private > 0);
+    assert.ok(Math.abs(o.own + o.org + o.person + o.private - 1) < 1e-9);
   });
 
   it('adds up the calendar across windows and keeps one value per day', () => {
@@ -197,6 +204,21 @@ describe('languageShares', () => {
     // RepoDetail.commits.authored of a fork only holds post-fork commits.
     const fork = { ...repo('team/fork', [['Ruby', 1000]], 100, 50), isFork: true };
     assert.deepEqual(languageShares([fork]), [{ name: 'Ruby', color: null, share: 1 }]);
+  });
+
+  it('says which repositories the languages come from, without naming private ones', () => {
+    const secret = { ...repo('acme/secret', [['Go', 1000]], 10, 10), isPrivate: true, owner: { __typename: 'Organization', login: 'acme' } };
+    const team = { ...repo('acme/app', [['Go', 2000]], 10, 5), owner: { __typename: 'Organization', login: 'acme' } };
+    const mate = repo('mate/exam', [['Java', 500]], 10, 10);
+    const { languageSources: sources, languageOrigin: origin } = languageSources([repo('me/solo', [['Java', 1000]], 10, 10), team, mate, secret], 'me');
+    // Weights: me/solo 1000, acme/app 1000, mate/exam 500, private 1000.
+    assert.deepEqual(sources, [
+      { repo: 'acme/app', kind: 'org', share: 1000 / 3500 },
+      { repo: 'me/solo', kind: 'own', share: 1000 / 3500 },
+      { repo: 'mate/exam', kind: 'person', share: 500 / 3500 },
+      { repo: null, kind: 'private', share: 1000 / 3500 },
+    ]);
+    assert.deepEqual(origin, { own: 1000 / 3500, org: 1000 / 3500, person: 500 / 3500, private: 1000 / 3500 });
   });
 
   it('skips empty repositories', () => {

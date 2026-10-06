@@ -25,6 +25,25 @@ export interface RunOptions {
   log?: (message: string) => void;
 }
 
+const pct = (share: number) => `${(share * 100).toFixed(1)}%`;
+
+/** "your repos 52.0%, org repos 41.5%, ..." */
+export function originText(stats: Stats): string {
+  const o = stats.languageOrigin;
+  const parts: Array<[string, number]> = [
+    ['your repos', o.own],
+    ['org repos', o.org],
+    ["other people's repos", o.person],
+    ['private repos', o.private],
+  ];
+  return parts.filter(([, v]) => v > 0).map(([k, v]) => `${k} ${pct(v)}`).join(', ') || 'none';
+}
+
+/** "owner/repo 40.0% (org), ..." */
+export function sourcesText(stats: Stats): string {
+  return stats.languageSources.map((src) => `${src.repo ?? 'private repos'} ${pct(src.share)} (${src.kind})`).join(', ') || 'none';
+}
+
 export async function run(settings: Settings, options: RunOptions = {}): Promise<RunResult> {
   const log = options.log ?? (() => {});
 
@@ -48,6 +67,8 @@ export async function run(settings: Settings, options: RunOptions = {}): Promise
       `orgs: ${stats.orgs.map((o) => o.login).join(', ') || 'none'}${stats.privateOrgs ? ` (+${stats.privateOrgs} private)` : ''}`,
   );
   log(`languages by ${stats.languagesBy}: ${stats.languages.map((l) => `${l.name} ${(l.share * 100).toFixed(1)}%`).join(', ') || 'none'}`);
+  log(`languages come from: ${originText(stats)}`);
+  log(`biggest language sources: ${sourcesText(stats)}`);
 
   const cards = settings.cards.map((name) => CARDS[name](stats, settings.card));
 

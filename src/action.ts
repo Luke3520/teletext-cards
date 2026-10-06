@@ -3,7 +3,7 @@
 
 import { appendFileSync } from 'node:fs';
 import { publish } from './publish.ts';
-import { run } from './run.ts';
+import { originText, run, sourcesText } from './run.ts';
 import { parseSettings } from './settings.ts';
 import type { Stats } from './stats.ts';
 
@@ -27,6 +27,8 @@ function summary(stats: Stats, files: string[]): void {
     ['Repositories', `${stats.repos} owned or worked on (${stats.contributedReposNotOwned} owned by orgs or others)`],
     ['Organisations', [...stats.orgs.map((o) => o.login), ...(stats.privateOrgs ? [`+${stats.privateOrgs} private`] : [])].join(', ') || 'none'],
     ['Languages', stats.languages.map((l) => `${l.name} ${(l.share * 100).toFixed(1)}%`).join(', ') || 'none'],
+    ['Languages come from', originText(stats)],
+    ['Biggest language sources', sourcesText(stats)],
     ['Private contributions (anonymous)', stats.privateContributions],
   ];
   const md = [

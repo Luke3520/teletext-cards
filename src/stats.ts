@@ -28,6 +28,18 @@ export interface OrgSummary {
   contributions: number;
 }
 
+/** Who owns a repository, seen from the user. */
+export type RepoKind = 'own' | 'org' | 'person';
+
+/** Where the language mix comes from. */
+export interface LanguageSource {
+  /** owner/name, or null for private repositories, which are never named. */
+  repo: string | null;
+  kind: RepoKind | 'private';
+  /** Fraction of the whole language mix, 0..1. */
+  share: number;
+}
+
 export interface Stats {
   login: string;
   name: string | null;
@@ -58,6 +70,10 @@ export interface Stats {
   privateOrgs: number;
   languages: LanguageShare[];
   languagesBy: LanguageMode;
+  /** The repositories behind the language mix, biggest first. */
+  languageSources: LanguageSource[];
+  /** How much of the language mix comes from each kind of repository, 0..1 each. */
+  languageOrigin: Record<RepoKind | 'private', number>;
   activeDays: number;
   currentStreak: number;
   longestStreak: number;
@@ -170,6 +186,7 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
   for (let d = 0; d < 365; d++) lastYear += countOn(today - d * DAY);
 
   const owned = raw.ownedRepos.filter((r) => !excluded(r.nameWithOwner));
+  const included = raw.repos.filter((r) => !excluded(r.nameWithOwner));
 
   return {
     login,
@@ -191,8 +208,9 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
     contributedReposNotOwned: [...touched.values()].filter((t) => t.ref.owner.login.toLowerCase() !== lower).length,
     orgs: named,
     privateOrgs: orgs.size - named.length,
-    languages: languageShares(raw.repos.filter((r) => !excluded(r.nameWithOwner)), options),
+    languages: languageShares(included, options),
     languagesBy: options.languagesBy ?? 'authorship',
+    ...languageSources(included, login, options),
     activeDays: active,
     currentStreak: current,
     longestStreak: longest,
@@ -213,25 +231,12 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
  * RepoDetail.commits), so code written upstream is not counted twice.
  */
 export function languageShares(repos: RepoDetail[], options: StatsOptions = {}): LanguageShare[] {
-  const mode = options.languagesBy ?? 'authorship';
   const count = Math.max(1, options.languagesCount ?? 5);
-  const skip = new Set((options.excludeLanguages ?? []).map((l) => l.trim().toLowerCase()));
-
   const totals = new Map<string, { weight: number; color: string | null }>();
-  for (const repo of repos) {
-    if (!repo.commits) continue;
-    const { total, authored } = repo.commits;
-    if (mode !== 'bytes' && (total === 0 || authored === 0)) continue;
-    const size = repo.languages.edges.reduce((t, e) => t + e.size, 0);
-    if (size === 0) continue;
-    for (const { size: bytes, node } of repo.languages.edges) {
-      if (skip.has(node.name.toLowerCase())) continue;
-      const weight =
-        mode === 'bytes' ? bytes : mode === 'commits' ? (authored * bytes) / size : bytes * Math.min(1, authored / total);
-      const t = totals.get(node.name);
-      if (t) t.weight += weight;
-      else totals.set(node.name, { weight, color: node.color });
-    }
+  for (const w of languageWeights(repos, options)) {
+    const t = totals.get(w.language);
+    if (t) t.weight += w.weight;
+    else totals.set(w.language, { weight: w.weight, color: w.color });
   }
 
   const all = [...totals].map(([name, t]) => ({ name, color: t.color, weight: t.weight })).sort((a, b) => b.weight - a.weight || a.name.localeCompare(b.name));
@@ -243,4 +248,70 @@ export function languageShares(repos: RepoDetail[], options: StatsOptions = {}):
   const list = top.map((l) => ({ name: l.name, color: l.color, share: l.weight / grand }));
   if (rest / grand >= 0.005) list.push({ name: 'Other', color: null, share: rest / grand });
   return list;
+}
+
+/**
+ * The repositories behind the language mix, and how much comes from your own
+ * repositories, organisations' and other people's. Private repositories are
+ * grouped together and never named: run logs of public repos are public.
+ */
+export function languageSources(
+  repos: RepoDetail[],
+  login: string,
+  options: StatsOptions = {},
+  count = 8,
+): { languageSources: LanguageSource[]; languageOrigin: Record<RepoKind | 'private', number> } {
+  const me = login.toLowerCase();
+  const byRepo = new Map<string, { kind: RepoKind; weight: number }>();
+  const origin: Record<RepoKind | 'private', number> = { own: 0, org: 0, person: 0, private: 0 };
+  let grand = 0;
+  for (const w of languageWeights(repos, options)) {
+    grand += w.weight;
+    if (w.repo.isPrivate) {
+      origin.private += w.weight;
+      continue;
+    }
+    const kind: RepoKind = w.repo.owner.login.toLowerCase() === me ? 'own' : w.repo.owner.__typename === 'Organization' ? 'org' : 'person';
+    origin[kind] += w.weight;
+    const r = byRepo.get(w.repo.nameWithOwner);
+    if (r) r.weight += w.weight;
+    else byRepo.set(w.repo.nameWithOwner, { kind, weight: w.weight });
+  }
+  if (grand === 0) return { languageSources: [], languageOrigin: origin };
+
+  const sources: LanguageSource[] = [...byRepo]
+    .sort((a, b) => b[1].weight - a[1].weight || a[0].localeCompare(b[0]))
+    .slice(0, count)
+    .map(([repo, r]) => ({ repo, kind: r.kind, share: r.weight / grand }));
+  if (origin.private > 0) sources.push({ repo: null, kind: 'private', share: origin.private / grand });
+  for (const k of Object.keys(origin) as Array<keyof typeof origin>) origin[k] /= grand;
+  return { languageSources: sources, languageOrigin: origin };
+}
+
+interface Weighted {
+  repo: RepoDetail;
+  language: string;
+  color: string | null;
+  weight: number;
+}
+
+/** One weight per repository and language, as described for languageShares. */
+function languageWeights(repos: RepoDetail[], options: StatsOptions): Weighted[] {
+  const mode = options.languagesBy ?? 'authorship';
+  const skip = new Set((options.excludeLanguages ?? []).map((l) => l.trim().toLowerCase()));
+  const out: Weighted[] = [];
+  for (const repo of repos) {
+    if (!repo.commits) continue;
+    const { total, authored } = repo.commits;
+    if (mode !== 'bytes' && (total === 0 || authored === 0)) continue;
+    const size = repo.languages.edges.reduce((t, e) => t + e.size, 0);
+    if (size === 0) continue;
+    for (const { size: bytes, node } of repo.languages.edges) {
+      if (skip.has(node.name.toLowerCase())) continue;
+      const weight =
+        mode === 'bytes' ? bytes : mode === 'commits' ? (authored * bytes) / size : bytes * Math.min(1, authored / total);
+      out.push({ repo, language: node.name, color: node.color, weight });
+    }
+  }
+  return out;
 }
