@@ -107,6 +107,7 @@ own layout:
 | `languages_by` | `authorship` | `authorship`, `commits` or `bytes` (the classic method). |
 | `languages_count` | `5` | Languages listed before the rest become *Other*. |
 | `orgs` | | Choose the ORGS line, comma separated. `name` shows that organisation first (even a private one), `name=Label` renames it too, `-name` hides it. The rest follow, busiest first. |
+| `hide` | | Parts to leave out, comma separated: `since`, `contributions`, `commits`, `pull_requests`, `reviews`, `repositories`, `orgs`, `languages`, `activity`. Everything shows unless you hide it. |
 | `exclude_repos` | | `owner/name` or `owner/*`, comma separated. |
 | `exclude_languages` | | Language names, comma separated. |
 | `animate` | `true` | The page arrives row by row and the clock blinks. Off for anyone who prefers reduced motion. |

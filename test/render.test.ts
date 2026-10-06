@@ -51,6 +51,19 @@ describe('cards', () => {
     assert.match(CARDS.page(named, options).alt, /Organisations: Nordlys Labs, kbh-hackers/);
   });
 
+  it('leaves out hidden parts without leaving gaps', () => {
+    const full = CARDS.page(stats, options);
+    const lean = CARDS.page(stats, { ...options, hide: ['commits', 'orgs', 'activity', 'since'] });
+    assert.doesNotMatch(lean.alt, /commits|Organisations|52 weeks/);
+    assert.match(lean.alt, /contributions, \d+ pull requests/);
+    const height = (svg: string) => Number(/height="(\d+)"/.exec(svg)![1]);
+    // One number row, three org rows, and the graph with its gap: 7 rows of 20px.
+    // (The since line sits beside the nisse, which is taller, so it saves nothing.)
+    assert.equal(height(full.svg) - height(lean.svg), 7 * 20);
+    const bare = CARDS.stats(stats, { ...options, hide: ['contributions', 'commits', 'pull_requests', 'reviews', 'repositories', 'orgs'] });
+    assert.match(bare.alt, /^\d+ contributions in the last 52 weeks$/);
+  });
+
   it('respects reduced motion and can be static', () => {
     assert.match(CARDS.page(stats, options).svg, /prefers-reduced-motion:reduce/);
     const still = CARDS.page(stats, { ...options, animate: false, crt: false });

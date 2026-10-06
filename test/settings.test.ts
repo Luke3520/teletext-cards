@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { parseOrgs, parseSettings } from '../src/settings.ts';
+import { parseHide, parseOrgs, parseSettings } from '../src/settings.ts';
 
 const from = (values: Record<string, string>) => (name: string) => values[name];
 
@@ -46,6 +46,14 @@ describe('parseSettings', () => {
     });
     assert.deepEqual(parseOrgs(''), { pin: [], hide: [] });
     assert.throws(() => parseOrgs('not an org'), /not an organisation login/);
+  });
+
+  it('reads which parts to hide, with friendly aliases', () => {
+    assert.deepEqual(parseHide('orgs, 52 weeks'.replace('52 weeks', 'weeks')), ['orgs', 'activity']);
+    assert.deepEqual(parseHide('PRs, repos, pull-requests, Since'), ['pull_requests', 'repositories', 'pull_requests', 'since']);
+    assert.deepEqual(parseHide(''), []);
+    assert.throws(() => parseHide('stars'), /unknown part "stars"/);
+    assert.deepEqual(parseSettings(from({ username: 'x', hide: 'orgs' })).card.hide, ['orgs']);
   });
 
   it('rejects bad input with a useful message', () => {

@@ -6,6 +6,10 @@ import type { Colour } from '../teletext/palette.ts';
 import type { Screen } from '../teletext/screen.ts';
 import type { Stats } from '../stats.ts';
 
+/** Parts of the page and stats cards that `hide` can switch off. */
+export const PARTS = ['since', 'contributions', 'commits', 'pull_requests', 'reviews', 'repositories', 'orgs', 'languages', 'activity'] as const;
+export type Part = (typeof PARTS)[number];
+
 export interface CardOptions {
   locale: Locale;
   timeZone: string;
@@ -23,6 +27,8 @@ export interface CardOptions {
   art?: string[];
   /** Up to four Fastext labels for the bottom row: red, green, yellow, cyan. */
   fastext?: string[];
+  /** Parts to leave out. */
+  hide?: Part[];
   /** Page-arrival animation and flashing. */
   animate?: boolean;
   /** Phosphor glow and scanlines. */

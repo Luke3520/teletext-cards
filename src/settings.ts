@@ -3,7 +3,8 @@
 import type { CardName } from './cards/page.ts';
 import { CARDS } from './cards/page.ts';
 import { resolveArt } from './cards/art.ts';
-import type { CardOptions } from './cards/common.ts';
+import type { CardOptions, Part } from './cards/common.ts';
+import { PARTS } from './cards/common.ts';
 import type { Locale } from './i18n.ts';
 import { STRINGS } from './i18n.ts';
 import type { LanguageMode, OrgDisplay, StatsOptions } from './stats.ts';
@@ -50,6 +51,27 @@ function oneOf<T extends string>(name: string, value: string | undefined, allowe
   if (!v) return fallback;
   if (!(allowed as readonly string[]).includes(v)) throw new SettingsError(`${name} must be one of ${allowed.join(', ')}, got "${value}"`);
   return v as T;
+}
+
+const PART_ALIASES: Readonly<Record<string, Part>> = {
+  prs: 'pull_requests',
+  pullrequests: 'pull_requests',
+  repos: 'repositories',
+  organisations: 'orgs',
+  organizations: 'orgs',
+  langs: 'languages',
+  weeks: 'activity',
+  graph: 'activity',
+};
+
+/** The `hide` input: parts of the page and stats cards to leave out. */
+export function parseHide(value: string | undefined): Part[] {
+  return list(value).map((raw) => {
+    const key = raw.toLowerCase().replace(/[\s-]+/g, '_');
+    const part = (PARTS as readonly string[]).includes(key) ? (key as Part) : PART_ALIASES[key.replace(/_/g, '')];
+    if (!part) throw new SettingsError(`hide: unknown part "${raw}". Parts: ${PARTS.join(', ')}`);
+    return part;
+  });
 }
 
 /**
@@ -125,6 +147,7 @@ export function parseSettings(get: (name: string) => string | undefined, default
       accent,
       art: resolveArt(get('art') ?? 'none'),
       fastext: list(get('fastext')).slice(0, 4),
+      hide: parseHide(get('hide')),
       animate: bool('animate', get('animate'), true),
       crt: bool('crt', get('crt'), true),
     },

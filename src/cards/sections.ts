@@ -5,6 +5,7 @@ import type { Strings } from '../i18n.ts';
 import type { Stats } from '../stats.ts';
 import type { Colour } from '../teletext/palette.ts';
 import type { Screen } from '../teletext/screen.ts';
+import type { Part } from './common.ts';
 import { RANK_COLOURS, fit, leader, len, num, packList, percentages } from './common.ts';
 
 export interface Section {
@@ -14,30 +15,29 @@ export interface Section {
 
 const LEADER = { label: 'cyan', dots: 'blue', value: 'white', extra: 'yellow' } as const;
 
-/** The headline numbers, one per row. */
-export function numbers(screen: Screen, row: number, stats: Stats, s: Strings): Section {
+/** The headline numbers, one per row, minus any the user hid. */
+export function numbers(screen: Screen, row: number, stats: Stats, s: Strings, hide: ReadonlySet<Part> = new Set()): Section {
   const end = screen.cols - 1;
-  const repos = stats.repos;
-  leader(screen, row++, 1, end, s.contributions, num(stats.contributions, s), LEADER);
-  leader(screen, row++, 1, end, s.commits, num(stats.commits, s), LEADER);
-  leader(screen, row++, 1, end, s.pullRequests, num(stats.pullRequests, s), LEADER, `${num(stats.mergedPullRequests, s)} ${s.merged}`);
-  leader(screen, row++, 1, end, s.reviews, num(stats.reviews, s), LEADER);
-  leader(
-    screen,
-    row++,
-    1,
-    end,
+  const alt: string[] = [];
+  const line = (part: Part, label: string, value: number, said: string, extra = '') => {
+    if (hide.has(part)) return;
+    leader(screen, row++, 1, end, label, num(value, s), LEADER, extra);
+    alt.push(said);
+  };
+  const merged = num(stats.mergedPullRequests, s);
+  const others = stats.contributedReposNotOwned;
+  line('contributions', s.contributions, stats.contributions, `${num(stats.contributions, s)} contributions`);
+  line('commits', s.commits, stats.commits, `${num(stats.commits, s)} commits`);
+  line('pull_requests', s.pullRequests, stats.pullRequests, `${num(stats.pullRequests, s)} pull requests (${merged} merged)`, `${merged} ${s.merged}`);
+  line('reviews', s.reviews, stats.reviews, `${num(stats.reviews, s)} code reviews`);
+  line(
+    'repositories',
     s.repos,
-    num(repos, s),
-    LEADER,
-    stats.contributedReposNotOwned ? `${num(stats.contributedReposNotOwned, s)} ${s.notOwned}` : '',
+    stats.repos,
+    `${num(stats.repos, s)} repositories` + (others ? ` (${num(others, s)} owned by organisations or teammates)` : ''),
+    others ? `${num(others, s)} ${s.notOwned}` : '',
   );
-  const alt =
-    `${num(stats.contributions, s)} contributions, ${num(stats.commits, s)} commits, ` +
-    `${num(stats.pullRequests, s)} pull requests (${num(stats.mergedPullRequests, s)} merged), ` +
-    `${num(stats.reviews, s)} code reviews, ${num(repos, s)} repositories` +
-    (stats.contributedReposNotOwned ? ` (${num(stats.contributedReposNotOwned, s)} owned by organisations or teammates)` : '');
-  return { row, alt };
+  return { row, alt: alt.join(', ') };
 }
 
 /** Organisations the user contributed to: the work that owner-only cards leave out. */
