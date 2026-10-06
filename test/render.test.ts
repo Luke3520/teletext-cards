@@ -5,7 +5,7 @@ import { NISSE, artSize, resolveArt, stillArt } from '../src/cards/art.ts';
 import { fit, packList, percentages } from '../src/cards/common.ts';
 import { CARDS } from '../src/cards/page.ts';
 import type { RawData } from '../src/github/types.ts';
-import { clock, daysBetween, strings } from '../src/i18n.ts';
+import { clock, daysBetween, strings, when } from '../src/i18n.ts';
 import { computeStats } from '../src/stats.ts';
 import { Screen } from '../src/teletext/screen.ts';
 import { renderSVG } from '../src/teletext/svg.ts';
@@ -71,11 +71,11 @@ describe('cards', () => {
   it('shows the pulse and recent work, and leaves the year to the stats card', () => {
     const page = CARDS.page(stats, options);
     assert.match(page.alt, /\d+ contributions in the last 7 days \(\d+ in an ordinary week\), a streak of \d+ days? \(best \d+\)/);
-    assert.match(page.alt, /Recent work: fjord-tracker yesterday, nordlys-labs\/aurora-api 2 days ago, a private repository 4 days ago$/);
+    assert.match(page.alt, /Recent work: fjord-tracker yesterday, nordlys-labs\/aurora-api 04 Oct, a private repository 02 Oct$/);
     assert.doesNotMatch(page.alt, /52 weeks|internal-billing|secret-co/);
     assert.match(CARDS.stats(stats, options).alt, /contributions in the last 52 weeks$/);
     const named = computeStats(demo, { orgs: { pin: [{ login: 'secret-co', label: 'Secret Co' }], hide: [] } });
-    assert.match(CARDS.page(named, options).alt, /a private Secret Co repository 4 days ago$/);
+    assert.match(CARDS.page(named, options).alt, /a private Secret Co repository 02 Oct$/);
   });
 
   it('animates the pipe nisse in layers, and keeps it still when asked', () => {
@@ -160,17 +160,23 @@ describe('layout helpers', () => {
     assert.deepEqual(clock(at, 'UTC', strings('en')), { date: 'Tue 06 Oct', time: '22:30' });
   });
 
-  it('counts days ago in the chosen time zone', () => {
+  it('dates recent work in the chosen time zone and language', () => {
     const now = new Date('2026-10-06T04:17:00Z');
     // Half past midnight in Copenhagen, still the evening before in UTC.
     const late = new Date('2026-10-05T22:30:00Z');
     assert.equal(daysBetween(late, now, 'Europe/Copenhagen'), 0);
     assert.equal(daysBetween(late, now, 'UTC'), 1);
+    const en = strings('en');
+    assert.equal(when(late, now, 'Europe/Copenhagen', en), 'today');
+    assert.equal(when(late, now, 'UTC', en), 'yesterday');
+    assert.equal(when(new Date('2026-09-17T10:00:00Z'), now, 'UTC', en), '17 Sep');
+    // Half a year on, the month and year say more than a day would.
+    assert.equal(when(new Date('2026-04-06T10:00:00Z'), now, 'UTC', en), 'Apr 2026');
+    assert.equal(when(new Date('2024-09-03T10:00:00Z'), now, 'UTC', en), 'Sep 2024');
     assert.deepEqual(
-      [0, 1, 4, 20, 90, 400, 800].map((d) => strings('en').ago(d)),
-      ['today', 'yesterday', '4 days ago', '2 weeks ago', '3 months ago', 'a year ago', '2 years ago'],
+      ['2026-10-05T10:00:00Z', '2026-10-01T10:00:00Z'].map((t) => when(new Date(t), now, 'Europe/Copenhagen', strings('da'))),
+      ['i går', '01 okt'],
     );
-    assert.deepEqual([1, 3].map((d) => strings('da').ago(d)), ['i går', 'for 3 dage siden']);
   });
 
   it('reads built-in and custom pixel art', () => {

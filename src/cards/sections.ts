@@ -2,7 +2,7 @@
 // the next free row plus a plain-text line for the alt text.
 
 import type { Strings } from '../i18n.ts';
-import { daysBetween } from '../i18n.ts';
+import { when } from '../i18n.ts';
 import type { Stats } from '../stats.ts';
 import type { Colour } from '../teletext/palette.ts';
 import type { Screen } from '../teletext/screen.ts';
@@ -113,8 +113,8 @@ export function languages(screen: Screen, row: number, stats: Stats, s: Strings)
 }
 
 /**
- * The repositories with the user's latest commits, and how long ago, counted
- * in calendar days where the user lives. Private ones are never named.
+ * The repositories with the user's latest commits, and when, in the user's
+ * time zone. Private ones are never named.
  */
 export function recent(screen: Screen, row: number, stats: Stats, s: Strings, timeZone: string, count = 3): Section {
   const items = stats.recentWork.slice(0, count);
@@ -123,10 +123,10 @@ export function recent(screen: Screen, row: number, stats: Stats, s: Strings, ti
   const now = new Date(stats.generatedAt);
   const end = screen.cols - 1;
   const said = items.map((item) => {
-    const when = s.ago(daysBetween(new Date(item.at), now, timeZone));
+    const date = when(new Date(item.at), now, timeZone, s);
     const tag = item.private && item.label ? ` · ${s.private}` : '';
-    const name = fit(item.label ?? s.privateRepo, Math.max(1, end - 3 - len(when) - len(tag)));
-    leader(screen, row, 1, end, name + tag, when, RECENT);
+    const name = fit(item.label ?? s.privateRepo, Math.max(1, end - 3 - len(date) - len(tag)));
+    leader(screen, row, 1, end, name + tag, date, RECENT);
     // Private work is magenta, like the private organisations.
     if (tag) {
       screen.text(1 + len(name), row, ' · ', { fg: 'blue' });
@@ -136,7 +136,7 @@ export function recent(screen: Screen, row: number, stats: Stats, s: Strings, ti
     }
     row++;
     const what = item.private ? (item.label ? `a private ${item.label} repository` : 'a private repository') : item.label!;
-    return `${what} ${when}`;
+    return `${what} ${date}`;
   });
   return { row, alt: `Recent work: ${said.join(', ')}` };
 }

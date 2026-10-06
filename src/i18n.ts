@@ -32,7 +32,8 @@ export interface Strings {
   lastCommit: string;
   private: string;
   privateRepo: string;
-  ago: (days: number) => string;
+  today: string;
+  yesterday: string;
 }
 
 export const STRINGS: Readonly<Record<Locale, Strings>> = {
@@ -65,15 +66,8 @@ export const STRINGS: Readonly<Record<Locale, Strings>> = {
     lastCommit: 'last commit',
     private: 'private',
     privateRepo: 'private repo',
-    ago: (d) => {
-      if (d <= 0) return 'today';
-      if (d === 1) return 'yesterday';
-      if (d < 14) return `${d} days ago`;
-      if (d < 60) return `${Math.floor(d / 7)} weeks ago`;
-      if (d < 365) return `${Math.floor(d / 30)} months ago`;
-      const y = Math.floor(d / 365);
-      return y === 1 ? 'a year ago' : `${y} years ago`;
-    },
+    today: 'today',
+    yesterday: 'yesterday',
   },
   da: {
     numberLocale: 'da-DK',
@@ -104,15 +98,8 @@ export const STRINGS: Readonly<Record<Locale, Strings>> = {
     lastCommit: 'seneste commit',
     private: 'privat',
     privateRepo: 'privat repo',
-    ago: (d) => {
-      if (d <= 0) return 'i dag';
-      if (d === 1) return 'i går';
-      if (d < 14) return `for ${d} dage siden`;
-      if (d < 60) return `for ${Math.floor(d / 7)} uger siden`;
-      if (d < 365) return `for ${Math.floor(d / 30)} mdr. siden`;
-      const y = Math.floor(d / 365);
-      return y === 1 ? 'for et år siden' : `for ${y} år siden`;
-    },
+    today: 'i dag',
+    yesterday: 'i går',
   },
 };
 
@@ -124,17 +111,36 @@ export function formatNumber(value: number, s: Strings): string {
   return new Intl.NumberFormat(s.numberLocale).format(value);
 }
 
+/** The calendar date of a moment in a time zone. */
+function localDate(date: Date, timeZone: string): { y: number; m: number; d: number } {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric' })
+      .formatToParts(date)
+      .map((x) => [x.type, x.value]),
+  );
+  return { y: Number(p.year), m: Number(p.month), d: Number(p.day) };
+}
+
 /** Whole calendar days from `from` to `to`, counted in a time zone. */
 export function daysBetween(from: Date, to: Date, timeZone: string): number {
-  const day = (d: Date) => {
-    const p = Object.fromEntries(
-      new Intl.DateTimeFormat('en-GB', { timeZone, year: 'numeric', month: 'numeric', day: 'numeric' })
-        .formatToParts(d)
-        .map((x) => [x.type, x.value]),
-    );
-    return Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)) / 86_400_000;
+  const day = (date: Date) => {
+    const { y, m, d } = localDate(date, timeZone);
+    return Date.UTC(y, m - 1, d) / 86_400_000;
   };
   return day(to) - day(from);
+}
+
+/**
+ * When something happened, the way a teletext page would put it: today,
+ * yesterday, then the date like the header's ("04 Oct"), and month and year
+ * once it is more than half a year old, as `ls -l` does.
+ */
+export function when(at: Date, now: Date, timeZone: string, s: Strings): string {
+  const days = daysBetween(at, now, timeZone);
+  if (days <= 0) return s.today;
+  if (days === 1) return s.yesterday;
+  const { y, m, d } = localDate(at, timeZone);
+  return days < 183 ? `${String(d).padStart(2, '0')} ${s.months[m - 1]}` : `${s.months[m - 1]} ${y}`;
 }
 
 /** Date and time parts in a time zone, e.g. ["Tue 06 Oct", "21:37"]. */

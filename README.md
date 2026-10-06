@@ -142,7 +142,7 @@ art: |
 | Repositories | Repositories you own or contributed to, each counted once, including forks you opened pull requests in. *org/team* is how many belong to an organisation or another person. |
 | Orgs | Organisations owning a public repository you contributed to, busiest first. |
 | Languages | See `languages_by` above. In a fork, only commits made after forking count, so upstream code is not counted twice. |
-| Recent work | The three repositories with your latest commits on their default branch, and how many days ago in your `timezone`. Your profile repository is left out. A private repository shows as *private repo*, or as its organisation's name if you list that organisation in `orgs`. |
+| Recent work | The three repositories with your latest commits on their default branch, and when: *today*, *yesterday* or the date, in your `timezone`. Your profile repository is left out. A private repository shows as *private repo*, or as its organisation's name if you list that organisation in `orgs`. |
 | 52 weeks | On the stats card: your contributions per week over the last year, one mosaic column per week, on a square-root scale so quiet weeks still show next to a busy one. The page leaves this out, because GitHub already shows your contribution graph further down your profile. |
 
 GitHub only counts a commit as yours if its author email is linked to your
