@@ -62,6 +62,12 @@ export async function run(settings: Settings, options: RunOptions = {}): Promise
     `${stats.contributions} contributions (${stats.lastYear} in the last year), ${stats.commits} commits, ` +
       `${stats.pullRequests} pull requests (${stats.mergedPullRequests} merged), ${stats.reviews} reviews`,
   );
+  if (stats.privateContributions) {
+    log(
+      `${stats.privateContributions} contributions are in private repositories this token cannot see: ` +
+        'they count in the totals, but not in repositories, organisations or languages',
+    );
+  }
   log(
     `${stats.repos} repositories owned or worked on, ${stats.contributedReposNotOwned} of them owned by orgs or others; ` +
       `orgs: ${stats.orgs.map((o) => o.login).join(', ') || 'none'}${stats.privateOrgs ? ` (+${stats.privateOrgs} private)` : ''}`,
