@@ -56,6 +56,11 @@ export interface Stats {
   issues: number;
   /** Contributions in private repositories the token cannot see. */
   privateContributions: number;
+  /**
+   * Private repositories whose work GitHub's contribution data hid, counted
+   * from their commit history instead. Their commits are included in `commits`.
+   */
+  recoveredPrivateRepos: number;
   ownedRepos: number;
   stars: number;
   /** Repositories you own or worked on: owned plus contributed, counted once. */
@@ -144,6 +149,19 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
     if (excluded(repository.nameWithOwner) || touched.has(repository.nameWithOwner)) continue;
     touched.set(repository.nameWithOwner, { ref: repository, contributions: pullRequests });
   }
+  // Private repositories the token can read, but whose contributions GitHub
+  // reports only as an anonymous count: read the commit history instead.
+  let recoveredCommits = 0;
+  let recoveredRepos = 0;
+  if (sum((w) => w.restrictedContributionsCount) > 0) {
+    for (const repo of raw.repos) {
+      const authored = repo.commits?.authored ?? 0;
+      if (!repo.isPrivate || authored === 0 || touched.has(repo.nameWithOwner) || excluded(repo.nameWithOwner)) continue;
+      touched.set(repo.nameWithOwner, { ref: repo, contributions: authored });
+      recoveredCommits += authored;
+      recoveredRepos++;
+    }
+  }
 
   const orgs = new Map<string, { contributions: number; public: boolean }>();
   for (const { ref, contributions } of touched.values()) {
@@ -195,12 +213,13 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
     generatedAt: raw.fetchedAt,
     contributions: [...days.values()].reduce((a, b) => a + b, 0),
     lastYear,
-    commits: sum((w) => w.totalCommitContributions),
+    commits: sum((w) => w.totalCommitContributions) + recoveredCommits,
     pullRequests: raw.user.pullRequests,
     mergedPullRequests: raw.user.mergedPullRequests,
     reviews: sum((w) => w.totalPullRequestReviewContributions),
     issues: raw.user.issues,
     privateContributions: sum((w) => w.restrictedContributionsCount),
+    recoveredPrivateRepos: recoveredRepos,
     ownedRepos: owned.length,
     stars: owned.reduce((t, r) => t + r.stargazerCount, 0),
     repos: new Set([...owned.map((r) => r.nameWithOwner.toLowerCase()), ...[...touched.keys()].map((k) => k.toLowerCase())]).size,

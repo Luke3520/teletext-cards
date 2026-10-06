@@ -35,14 +35,25 @@ const OWNED = `query Owned($login: String!, $after: String) {
 const ACCESS = `query Access($login: String!) {
   user(login: $login) {
     repositories(ownerAffiliations: OWNER, privacy: PRIVATE) { totalCount }
-    organizations(first: 100) { totalCount nodes { repositories(privacy: PRIVATE) { totalCount } } }
+    organizations(first: 100) {
+      totalCount
+      nodes {
+        repositories(privacy: PRIVATE, first: 100) {
+          totalCount
+          nodes { nameWithOwner isPrivate isFork createdAt owner { __typename login } }
+        }
+      }
+    }
   }
 }`;
 
 interface AccessData {
   user: {
     repositories: { totalCount: number };
-    organizations: { totalCount: number; nodes: Array<{ repositories: { totalCount: number } } | null> };
+    organizations: {
+      totalCount: number;
+      nodes: Array<{ repositories: { totalCount: number; nodes: Array<RepoRef | null> } } | null>;
+    };
   };
 }
 
@@ -190,6 +201,9 @@ export async function collect(client: GitHubClient, options: CollectOptions): Pr
     }
   }
   for (const { repository } of forks) refs.set(repository.nameWithOwner, repository);
+  // Private organisation repos: their commit history tells us what GitHub's
+  // contribution data may hide (see computeStats).
+  for (const repo of access?.orgPrivateRepoRefs ?? []) if (!refs.has(repo.nameWithOwner)) refs.set(repo.nameWithOwner, repo);
 
   const repos = await fetchDetails(client, user.id, [...refs.values()]);
   log(`${repos.length} repositories with contributions or owned, ${repos.filter((r) => r.owner.login !== user.login).length} of them owned by others`);
@@ -226,6 +240,7 @@ async function checkAccess(client: GitHubClient, login: string): Promise<TokenAc
       organizations: u.organizations.totalCount,
       orgPrivateRepos: orgs.reduce((t, o) => t + o.repositories.totalCount, 0),
       orgsWithPrivateRepos: orgs.filter((o) => o.repositories.totalCount > 0).length,
+      orgPrivateRepoRefs: orgs.flatMap((o) => o.repositories.nodes.filter((r): r is RepoRef => r !== null && r.isPrivate)),
     };
   } catch {
     return undefined;

@@ -71,8 +71,9 @@ export async function run(settings: Settings, options: RunOptions = {}): Promise
   }
   if (stats.privateContributions) {
     log(
-      `${stats.privateContributions} contributions are in private repositories this token cannot see: ` +
-        'they count in the totals, but not in repositories, organisations or languages',
+      `GitHub's contribution data hides ${stats.privateContributions} private contributions from this token. ` +
+        'They count in the contribution total; repositories it can still read are counted from their commit history' +
+        (stats.recoveredPrivateRepos ? ` (${stats.recoveredPrivateRepos} found)` : ' (none found)'),
     );
     const perYear = raw.windows
       .filter((w) => w.restrictedContributionsCount > 0)

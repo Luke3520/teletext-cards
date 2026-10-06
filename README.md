@@ -160,6 +160,12 @@ repositories, create a classic personal access token with the `repo` and
 Private repositories then count towards the numbers and languages. Their names,
 and the names of organisations you only know privately, never appear on a card.
 
+GitHub's contribution data sometimes hides private work even from your own
+token: it shows up only as an anonymous count. When that happens, the action
+reads the commit history of every private repository the token can open,
+including your organisations' repositories, and counts your commits there
+directly.
+
 ## Run it locally
 
 Node 22.18 or newer runs the TypeScript directly; there is no build step.

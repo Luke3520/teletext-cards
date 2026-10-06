@@ -147,6 +147,22 @@ describe('computeStats', () => {
     assert.equal(computeStats(raw([base]), { excludeRepos: ['org/*'] }).contributedRepos, 0);
   });
 
+  it('reads private repos from their history when GitHub hides their contributions', () => {
+    const hidden = window('2026-09-01T00:00:00Z', '2026-10-06T12:00:00Z', [['2026-10-01', 9]], { restrictedContributionsCount: 9, totalCommitContributions: 2 });
+    const platform = { ...repo('shop/platform', [['Java', 1000]], 40, 30), isPrivate: true, owner: { __typename: 'Organization', login: 'shop' } };
+    const stats = computeStats(raw([hidden], [platform]));
+    assert.equal(stats.recoveredPrivateRepos, 1);
+    assert.equal(stats.commits, 2 + 30);
+    assert.equal(stats.privateOrgs, 1);
+    assert.equal(stats.contributedReposNotOwned, 1);
+    assert.equal(stats.contributions, 9);
+    assert.deepEqual(stats.languages.map((l) => l.name), ['Java']);
+    // Nothing hidden: nothing to recover, so nothing is counted twice.
+    const open = computeStats(raw([{ ...hidden, restrictedContributionsCount: 0 }], [platform]));
+    assert.equal(open.recoveredPrivateRepos, 0);
+    assert.equal(open.commits, 2);
+  });
+
   it('sums stars of owned repositories', () => {
     assert.equal(computeStats(raw([])).stars, 3);
   });

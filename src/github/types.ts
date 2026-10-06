@@ -90,4 +90,10 @@ export interface TokenAccess {
   /** Private repositories the token can see across those organisations. */
   orgPrivateRepos: number;
   orgsWithPrivateRepos: number;
+  /**
+   * Those private organisation repositories. GitHub's contribution data can
+   * hide work in them even from the user's own token, so we read their commit
+   * history directly. Never shown by name.
+   */
+  orgPrivateRepoRefs?: RepoRef[];
 }

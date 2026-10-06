@@ -89,10 +89,14 @@ describe('collect', () => {
       }
       if (name === 'Window') return { user: { contributionsCollection: emptyWindow } };
       if (name === 'Access') {
+        const secret = { nameWithOwner: 'acme/secret', isPrivate: true, isFork: false, createdAt: '2026-01-01T00:00:00Z', owner: { __typename: 'Organization', login: 'acme' } };
         return {
           user: {
             repositories: { totalCount: 2 },
-            organizations: { totalCount: 3, nodes: [{ repositories: { totalCount: 1 } }, { repositories: { totalCount: 0 } }, null] },
+            organizations: {
+              totalCount: 3,
+              nodes: [{ repositories: { totalCount: 1, nodes: [secret] } }, { repositories: { totalCount: 0, nodes: [] } }, null],
+            },
           },
         };
       }
@@ -131,9 +135,12 @@ describe('collect', () => {
 
     assert.deepEqual(data.ownedRepos.map((r) => r.nameWithOwner), ['me/one', 'me/two']);
     assert.equal(calls.filter((c) => c.name === 'Window').length, 2);
-    assert.deepEqual(data.repos.map((r) => r.nameWithOwner).sort(), ['acme/api', 'me/one', 'team/tests']);
+    // Private org repos come in through the access check, to read their history.
+    assert.deepEqual(data.repos.map((r) => r.nameWithOwner).sort(), ['acme/api', 'acme/secret', 'me/one', 'team/tests']);
     assert.deepEqual(data.repos.find((r) => r.nameWithOwner === 'acme/api')!.commits, { total: 4, authored: 2 });
-    assert.deepEqual(data.access, { ownedPrivateRepos: 2, organizations: 3, orgPrivateRepos: 1, orgsWithPrivateRepos: 1 });
+    assert.equal(data.access!.organizations, 3);
+    assert.equal(data.access!.orgPrivateRepos, 1);
+    assert.deepEqual(data.access!.orgPrivateRepoRefs!.map((r) => r.nameWithOwner), ['acme/secret']);
     assert.equal(calls.find((c) => c.name === 'Repos')!.variables.uid, 'U1');
     // Forks come from pull requests, and only post-fork commits count as authored.
     assert.deepEqual(data.forks, [
