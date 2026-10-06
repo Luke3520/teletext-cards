@@ -43,11 +43,14 @@ export function numbers(screen: Screen, row: number, stats: Stats, s: Strings): 
 /** Organisations the user contributed to: the work that owner-only cards leave out. */
 export function organisations(screen: Screen, row: number, stats: Stats, s: Strings, maxLines = 2): Section {
   const names = stats.orgs.map((o) => o.login);
-  const items = stats.privateOrgs ? [...names, s.privateOrgs(stats.privateOrgs)] : names;
+  const privateLabel = s.privateOrgs(stats.privateOrgs);
+  const items = stats.privateOrgs ? [...names, privateLabel] : names;
   if (!items.length) return { row, alt: '' };
   const label = s.orgs;
   const start = 2 + len(label);
-  const lines = packList(items, screen.cols - 1 - start, ' · ', maxLines, s.more);
+  const lines = packList(items, screen.cols - 1 - start, ' · ', maxLines, s.more, (item) =>
+    stats.privateOrgs && item === privateLabel ? stats.privateOrgs : 1,
+  );
   screen.text(1, row, label, { fg: 'magenta' });
   lines.forEach((line, i) => {
     let col = start;

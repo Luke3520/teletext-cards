@@ -91,6 +91,12 @@ describe('layout helpers', () => {
       'microservices-happens',
       'exam-project-luke · +1 more',
     ]);
+    // "+2 private" stands for two organisations when it does not fit.
+    assert.deepEqual(packList([...orgs, '+2 private'], 33, ' · ', 3, (n) => `+${n} more`, (i) => (i === '+2 private' ? 2 : 1)), [
+      'DevOpsDynamite · KinoDAT23C',
+      'microservices-happens',
+      'exam-project-luke · +3 more',
+    ]);
     const lines = packList(['alpha', 'beta', 'gamma', 'delta', 'epsilon'], 14, ' · ', 2, (n) => `+${n}`);
     assert.deepEqual(lines, ['alpha · beta', 'gamma · +2']);
     for (const l of lines) assert.ok(l.length <= 14);

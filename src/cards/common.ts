@@ -81,7 +81,15 @@ export function leader(
  * `sep`. Each item goes on the first line with room for it, so short names
  * fill the gaps that long ones leave. What does not fit becomes "+N more".
  */
-export function packList(items: string[], width: number, sep: string, maxLines: number, more: (n: number) => string): string[] {
+export function packList(
+  items: string[],
+  width: number,
+  sep: string,
+  maxLines: number,
+  more: (n: number) => string,
+  /** How many things an item stands for, e.g. 2 for "+2 private". */
+  weight: (item: string) => number = () => 1,
+): string[] {
   const span = (parts: string[]) => parts.reduce((t, p, i) => t + len(p) + (i ? len(sep) : 0), 0);
   const lines: string[][] = [];
   let hidden = 0;
@@ -90,13 +98,12 @@ export function packList(items: string[], width: number, sep: string, maxLines: 
     const line = lines.find((l) => span([...l, item]) <= width);
     if (line) line.push(item);
     else if (lines.length < maxLines) lines.push([item]);
-    else hidden++;
+    else hidden += weight(raw);
   }
   if (hidden) {
     const last = lines[lines.length - 1]!;
     while (last.length > 1 && span([...last, more(hidden)]) > width) {
-      last.pop();
-      hidden++;
+      hidden += weight(last.pop()!);
     }
     if (span([...last, more(hidden)]) <= width) last.push(more(hidden));
   }
