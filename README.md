@@ -16,6 +16,9 @@ out a lot:
 - **Organisation and team work is missing.** Study projects, company repos and
   open source contributions usually live under an organisation or a teammate's
   account, so they never show up in your repo count, stars or languages.
+- **Team forks are invisible.** GitHub never counts commits or pull requests
+  in a fork as contributions, and many team projects start as a fork of a
+  course or starter repo.
 - **Languages are measured in bytes of repos you own, whoever wrote them.**
   A team repo under your name counts in full; the code you wrote somewhere
   else counts as nothing.
@@ -27,7 +30,7 @@ teletext-cards works differently:
 1. **It starts from your contributions.** GitHub records every commit, pull
    request, issue and review in a yearly *contributions collection*, whoever
    owns the repository. The action walks those back, one year at a time, to the
-   day you joined.
+   day you joined, then adds the forks you opened pull requests in.
 2. **Languages follow your commits.** Each repository's language mix is
    scaled by the share of its commits that you authored. Write a quarter of a
    team's Go service and a quarter of its Go counts. Never commit to a repo and
@@ -131,9 +134,9 @@ art: |
 | Contributions | Every day in your contribution calendars since you joined, so it matches your profile graph. Includes anonymous private contributions if you show them on your profile. |
 | Commits, code reviews | Summed from each yearly contributions collection. |
 | Pull requests | All pull requests you opened, and how many were merged. |
-| Repositories | Repositories with at least one of your contributions, plus the ones you own. *org/team* is how many belong to an organisation or another person. |
+| Repositories | Repositories you own or contributed to, each counted once, including forks you opened pull requests in. *org/team* is how many belong to an organisation or another person. |
 | Orgs | Organisations owning a public repository you contributed to, busiest first. |
-| Languages | See `languages_by` above. Forks are skipped: their code belongs to the upstream project. |
+| Languages | See `languages_by` above. In a fork, only commits made after forking count, so upstream code is not counted twice. |
 | 52 weeks | Your contributions per week over the last year, one mosaic column per week, on a square-root scale so quiet weeks still show next to a busy one. |
 
 GitHub only counts a commit as yours if its author email is linked to your
