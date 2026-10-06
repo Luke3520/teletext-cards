@@ -14,6 +14,18 @@ export interface StatsOptions {
   languagesBy?: LanguageMode;
   /** How many languages to list before grouping the rest as "Other". */
   languagesCount?: number;
+  /** Which organisations the cards name, and how. */
+  orgs?: OrgDisplay;
+}
+
+/**
+ * Choices for the ORGS line. Pinned organisations come first, in the given
+ * order, with an optional label, and are named even when private: listing
+ * one is consent to show it. Hidden ones are left off entirely.
+ */
+export interface OrgDisplay {
+  pin: Array<{ login: string; label?: string }>;
+  hide: string[];
 }
 
 export interface LanguageShare {
@@ -25,6 +37,8 @@ export interface LanguageShare {
 
 export interface OrgSummary {
   login: string;
+  /** Shown instead of the login, if set. */
+  label?: string;
   contributions: number;
 }
 
@@ -69,10 +83,15 @@ export interface Stats {
   contributedRepos: number;
   /** ...of which owned by organisations or other people. */
   contributedReposNotOwned: number;
-  /** Organisations with a public repository the user contributed to, busiest first. */
+  /**
+   * Organisations to name: pinned ones first, then those with a public
+   * repository the user contributed to, busiest first.
+   */
   orgs: OrgSummary[];
-  /** Organisations known only through private repositories: counted, never named. */
+  /** Organisations known only through private repositories and not pinned: counted, never named. */
   privateOrgs: number;
+  /** Organisations pinned in the options that the user has no contributions in. */
+  unmatchedOrgs: string[];
   languages: LanguageShare[];
   languagesBy: LanguageMode;
   /** The repositories behind the language mix, biggest first. */
@@ -171,10 +190,28 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
     o.public ||= !ref.isPrivate;
     orgs.set(ref.owner.login, o);
   }
-  const named = [...orgs]
-    .filter(([, o]) => o.public)
-    .map(([orgLogin, o]) => ({ login: orgLogin, contributions: o.contributions }))
-    .sort((a, b) => b.contributions - a.contributions || a.login.localeCompare(b.login));
+  // Pinned organisations first, in the user's order and wording; then the
+  // public ones, busiest first. Private ones stay anonymous unless pinned.
+  const display = options.orgs ?? { pin: [], hide: [] };
+  const hidden = new Set(display.hide.map((h) => h.toLowerCase()));
+  const found = new Map([...orgs].map(([orgLogin, o]) => [orgLogin.toLowerCase(), { login: orgLogin, ...o }]));
+  const pinned: OrgSummary[] = [];
+  const unmatchedOrgs: string[] = [];
+  for (const p of display.pin) {
+    const key = p.login.toLowerCase();
+    const o = found.get(key);
+    if (!o) unmatchedOrgs.push(p.login);
+    else if (!hidden.has(key) && !pinned.some((x) => x.login === o.login)) pinned.push({ login: o.login, label: p.label, contributions: o.contributions });
+  }
+  const shown = (orgLogin: string) => !hidden.has(orgLogin.toLowerCase()) && !pinned.some((p) => p.login === orgLogin);
+  const named = [
+    ...pinned,
+    ...[...orgs]
+      .filter(([orgLogin, o]) => o.public && shown(orgLogin))
+      .map(([orgLogin, o]) => ({ login: orgLogin, contributions: o.contributions }))
+      .sort((a, b) => b.contributions - a.contributions || a.login.localeCompare(b.login)),
+  ];
+  const anonymous = [...orgs].filter(([orgLogin, o]) => !o.public && shown(orgLogin)).length;
 
   // Streaks and the weekly graph, day by day from account creation to today.
   const today = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate());
@@ -226,7 +263,8 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
     contributedRepos: touched.size,
     contributedReposNotOwned: [...touched.values()].filter((t) => t.ref.owner.login.toLowerCase() !== lower).length,
     orgs: named,
-    privateOrgs: orgs.size - named.length,
+    privateOrgs: anonymous,
+    unmatchedOrgs,
     languages: languageShares(included, options),
     languagesBy: options.languagesBy ?? 'authorship',
     ...languageSources(included, login, options),

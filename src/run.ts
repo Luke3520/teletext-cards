@@ -82,8 +82,11 @@ export async function run(settings: Settings, options: RunOptions = {}): Promise
   }
   log(
     `${stats.repos} repositories owned or worked on, ${stats.contributedReposNotOwned} of them owned by orgs or others; ` +
-      `orgs: ${stats.orgs.map((o) => o.login).join(', ') || 'none'}${stats.privateOrgs ? ` (+${stats.privateOrgs} private)` : ''}`,
+      `orgs: ${stats.orgs.map((o) => o.label ?? o.login).join(', ') || 'none'}${stats.privateOrgs ? ` (+${stats.privateOrgs} private)` : ''}`,
   );
+  if (stats.unmatchedOrgs.length) {
+    log(`warning: orgs lists ${stats.unmatchedOrgs.join(', ')}, but you have no contributions there that this token can see`);
+  }
   log(`languages by ${stats.languagesBy}: ${stats.languages.map((l) => `${l.name} ${(l.share * 100).toFixed(1)}%`).join(', ') || 'none'}`);
   log(`languages come from: ${originText(stats)}`);
   log(`biggest language sources: ${sourcesText(stats)}`);

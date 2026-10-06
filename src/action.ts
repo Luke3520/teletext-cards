@@ -25,7 +25,7 @@ function summary(stats: Stats, files: string[]): void {
     ['Pull requests (merged)', `${stats.pullRequests} (${stats.mergedPullRequests})`],
     ['Code reviews', stats.reviews],
     ['Repositories', `${stats.repos} owned or worked on (${stats.contributedReposNotOwned} owned by orgs or others)`],
-    ['Organisations', [...stats.orgs.map((o) => o.login), ...(stats.privateOrgs ? [`+${stats.privateOrgs} private`] : [])].join(', ') || 'none'],
+    ['Organisations', [...stats.orgs.map((o) => o.label ?? o.login), ...(stats.privateOrgs ? [`+${stats.privateOrgs} private`] : [])].join(', ') || 'none'],
     ['Languages', stats.languages.map((l) => `${l.name} ${(l.share * 100).toFixed(1)}%`).join(', ') || 'none'],
     ['Languages come from', originText(stats)],
     ['Biggest language sources', sourcesText(stats)],

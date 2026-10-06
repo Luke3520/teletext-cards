@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { parseSettings } from '../src/settings.ts';
+import { parseOrgs, parseSettings } from '../src/settings.ts';
 
 const from = (values: Record<string, string>) => (name: string) => values[name];
 
@@ -37,6 +37,15 @@ describe('parseSettings', () => {
     assert.deepEqual(s.card.fastext, ['A', 'B', 'C', 'D']);
     assert.equal(s.card.accent, 'red');
     assert.equal(s.card.locale, 'da');
+  });
+
+  it('reads the orgs choices: pin, rename, hide', () => {
+    assert.deepEqual(parseOrgs('bikerental=BikeRental CPH, Betalingsblik,\n-exam-project-luke'), {
+      pin: [{ login: 'bikerental', label: 'BikeRental CPH' }, { login: 'Betalingsblik' }],
+      hide: ['exam-project-luke'],
+    });
+    assert.deepEqual(parseOrgs(''), { pin: [], hide: [] });
+    assert.throws(() => parseOrgs('not an org'), /not an organisation login/);
   });
 
   it('rejects bad input with a useful message', () => {

@@ -62,6 +62,25 @@ describe('computeStats', () => {
     );
   });
 
+  it('names, renames, orders and hides organisations as asked', () => {
+    const plain = computeStats(demo);
+    assert.deepEqual(plain.orgs.map((o) => o.login), ['nordlys-labs', 'kbh-hackers', 'open-fjord', 'eksamen-hold']);
+    assert.equal(plain.privateOrgs, 1);
+
+    const stats = computeStats(demo, {
+      orgs: { pin: [{ login: 'Secret-Co', label: 'Secret Co' }, { login: 'open-fjord' }, { login: 'typo-org' }], hide: ['kbh-hackers'] },
+    });
+    // Pinned first, in order and with labels; a pinned private org is named.
+    assert.deepEqual(
+      stats.orgs.map((o) => o.label ?? o.login),
+      ['Secret Co', 'open-fjord', 'nordlys-labs', 'eksamen-hold'],
+    );
+    assert.equal(stats.privateOrgs, 0);
+    assert.deepEqual(stats.unmatchedOrgs, ['typo-org']);
+    // Hiding only changes the ORGS line, not the work that is counted.
+    assert.equal(stats.contributedRepos, plain.contributedRepos);
+  });
+
   it('counts team forks, which GitHub leaves out of contributions', () => {
     const fork: RepoRef = { ...ref('team/app-tests', true), isFork: true, createdAt: '2026-09-10T00:00:00Z' };
     const stats = computeStats({ ...raw([]), forks: [{ repository: fork, pullRequests: 4 }] });

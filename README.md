@@ -106,6 +106,7 @@ own layout:
 | `timezone` | `UTC` | Time zone for the header clock, such as `Europe/Copenhagen`. |
 | `languages_by` | `authorship` | `authorship`, `commits` or `bytes` (the classic method). |
 | `languages_count` | `5` | Languages listed before the rest become *Other*. |
+| `orgs` | | Choose the ORGS line, comma separated. `name` shows that organisation first (even a private one), `name=Label` renames it too, `-name` hides it. The rest follow, busiest first. |
 | `exclude_repos` | | `owner/name` or `owner/*`, comma separated. |
 | `exclude_languages` | | Language names, comma separated. |
 | `animate` | `true` | The page arrives row by row and the clock blinks. Off for anyone who prefers reduced motion. |
@@ -158,7 +159,8 @@ repositories, create a classic personal access token with the `repo` and
 ```
 
 Private repositories then count towards the numbers and languages. Their names,
-and the names of organisations you only know privately, never appear on a card.
+and the names of organisations you only know privately, never appear on a card,
+unless you list such an organisation in `orgs`.
 
 GitHub's contribution data sometimes hides private work even from your own
 token: it shows up only as an anonymous count. When that happens, the action

@@ -42,7 +42,7 @@ export function numbers(screen: Screen, row: number, stats: Stats, s: Strings): 
 
 /** Organisations the user contributed to: the work that owner-only cards leave out. */
 export function organisations(screen: Screen, row: number, stats: Stats, s: Strings, maxLines = 2): Section {
-  const names = stats.orgs.map((o) => o.login);
+  const names = stats.orgs.map((o) => o.label ?? o.login);
   const privateLabel = s.privateOrgs(stats.privateOrgs);
   const items = stats.privateOrgs ? [...names, privateLabel] : names;
   if (!items.length) return { row, alt: '' };

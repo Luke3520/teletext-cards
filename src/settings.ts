@@ -6,7 +6,7 @@ import { resolveArt } from './cards/art.ts';
 import type { CardOptions } from './cards/common.ts';
 import type { Locale } from './i18n.ts';
 import { STRINGS } from './i18n.ts';
-import type { LanguageMode, StatsOptions } from './stats.ts';
+import type { LanguageMode, OrgDisplay, StatsOptions } from './stats.ts';
 import { COLOURS, isColour } from './teletext/palette.ts';
 
 export interface Settings {
@@ -53,6 +53,27 @@ function oneOf<T extends string>(name: string, value: string | undefined, allowe
 }
 
 /**
+ * The `orgs` input: `name` pins an organisation (named even if private),
+ * `name=Label` also renames it, `-name` hides it.
+ */
+export function parseOrgs(value: string | undefined): OrgDisplay {
+  const pin: OrgDisplay['pin'] = [];
+  const hide: string[] = [];
+  for (const entry of list(value)) {
+    if (entry.startsWith('-')) {
+      hide.push(entry.slice(1).trim());
+      continue;
+    }
+    const eq = entry.indexOf('=');
+    const login = (eq < 0 ? entry : entry.slice(0, eq)).trim();
+    const label = eq < 0 ? '' : entry.slice(eq + 1).trim();
+    if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(login)) throw new SettingsError(`orgs: "${login}" is not an organisation login`);
+    pin.push(label ? { login, label } : { login });
+  }
+  return { pin, hide };
+}
+
+/**
  * Reads settings through `get`, which returns the raw string for an input
  * name such as `exclude_repos`, or undefined when it was not given.
  */
@@ -92,6 +113,7 @@ export function parseSettings(get: (name: string) => string | undefined, default
       excludeLanguages: list(get('exclude_languages')),
       languagesBy: oneOf<LanguageMode>('languages_by', get('languages_by'), ['authorship', 'commits', 'bytes'], 'authorship'),
       languagesCount: int('languages_count', get('languages_count'), 5, 1, 10),
+      orgs: parseOrgs(get('orgs')),
     },
     card: {
       locale: oneOf<Locale>('locale', get('locale'), Object.keys(STRINGS) as Locale[], 'en'),

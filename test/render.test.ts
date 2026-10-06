@@ -46,6 +46,11 @@ describe('cards', () => {
     assert.match(card.svg, /Developer &lt;&amp;&gt; tester/);
   });
 
+  it('shows organisation labels', () => {
+    const named = computeStats(demo, { orgs: { pin: [{ login: 'nordlys-labs', label: 'Nordlys Labs' }], hide: [] } });
+    assert.match(CARDS.page(named, options).alt, /Organisations: Nordlys Labs, kbh-hackers/);
+  });
+
   it('respects reduced motion and can be static', () => {
     assert.match(CARDS.page(stats, options).svg, /prefers-reduced-motion:reduce/);
     const still = CARDS.page(stats, { ...options, animate: false, crt: false });
