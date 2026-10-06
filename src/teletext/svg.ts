@@ -9,7 +9,7 @@ import { GLYPHS } from './glyphs.ts';
 import { PALETTE } from './palette.ts';
 import type { Colour } from './palette.ts';
 import { CELL_H, CELL_W, SEXTANT_ROWS } from './screen.ts';
-import type { Cell, Screen, TextStyle } from './screen.ts';
+import type { Cell, MosaicPixel, Screen, TextStyle } from './screen.ts';
 
 export interface RenderOptions {
   /** Accessible name: the first thing a screen reader says. */
@@ -81,6 +81,14 @@ class Layer {
     else this.groups.set(key, [svg]);
   }
 
+  /** The colour and markup when everything is one colour without flash. */
+  only(): { colour: Colour; body: string } | null {
+    if (this.groups.size !== 1) return null;
+    const [key, parts] = [...this.groups][0]!;
+    const [colour, flash] = key.split('|') as [Colour, string];
+    return flash === '1' ? null : { colour, body: parts.join('') };
+  }
+
   toString(): string {
     let out = '';
     for (const [key, parts] of this.groups) {
@@ -120,15 +128,15 @@ function drawBackgrounds(screen: Screen, row: number): string {
   return out;
 }
 
-function drawPixels(screen: Screen, row: number, layer: Layer): void {
-  const width = screen.cols * 2;
+function drawPixels(pixels: ReadonlyMap<number, MosaicPixel>, cols: number, row: number, layer: Layer): void {
+  const width = cols * 2;
   for (let sy = 0; sy < 3; sy++) {
     const py = row * 3 + sy;
     const [dy, h] = SEXTANT_ROWS[sy]!;
     const y = row * CELL_H + dy;
     let px = 0;
     while (px < width) {
-      const p = screen.pixels.get(py * width + px);
+      const p = pixels.get(py * width + px);
       if (!p) {
         px++;
         continue;
@@ -142,7 +150,7 @@ function drawPixels(screen: Screen, row: number, layer: Layer): void {
       // Merge a run of same-coloured contiguous pixels into one rectangle.
       let end = px + 1;
       while (end < width) {
-        const q = screen.pixels.get(py * width + end);
+        const q = pixels.get(py * width + end);
         if (!q || q.separated || q.colour !== p.colour) break;
         end++;
       }
@@ -211,11 +219,21 @@ export function renderSVG(screen: Screen, options: RenderOptions): string {
     screen.cells[r]!.forEach((cell, c) => {
       if (!cell.covered) drawText(text, glyphs, cell, c, r);
     });
-    drawPixels(screen, r, mosaic);
+    drawPixels(screen.pixels, screen.cols, r, mosaic);
     backgrounds += rowGroup(r, drawBackgrounds(screen, r));
     foregrounds += rowGroup(r, `${mosaic}${text}`);
   }
-  const rows = backgrounds + foregrounds;
+  // Animated art layers. A one-colour layer carries its fill on the animated
+  // group itself, so keyframes can change the colour.
+  let art = '';
+  for (const { className, pixels } of screen.layers) {
+    const layer = new Layer();
+    for (let r = 0; r < screen.rows; r++) drawPixels(pixels, screen.cols, r, layer);
+    const one = layer.only();
+    art += one ? `<g class="${esc(className)}" fill="${PALETTE[one.colour]}">${one.body}</g>` : `<g class="${esc(className)}">${layer}</g>`;
+  }
+  if (art) art = animate ? `<g class="tt-a tt-in" style="animation-duration:${n(arrival + 0.035)}s">${art}</g>` : `<g>${art}</g>`;
+  const rows = backgrounds + foregrounds + art;
 
   const css = [
     animate &&
@@ -224,6 +242,7 @@ export function renderSVG(screen: Screen, options: RenderOptions): string {
         `@keyframes tt-hide{from,to{visibility:hidden}}@keyframes tt-show{from,to{visibility:visible}}`,
     animate && `.tt-fl{animation:tt-flash 1s steps(1) infinite}@keyframes tt-flash{75%{opacity:0}}`,
     animate && `@media (prefers-reduced-motion:reduce){.tt-a,.tt-fl{animation:none!important}}`,
+    ...(animate ? screen.css : []),
   ]
     .filter(Boolean)
     .join('');

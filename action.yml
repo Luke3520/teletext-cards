@@ -43,7 +43,7 @@ inputs:
     description: Colour of the title band. red, green, yellow, blue, magenta, cyan or white.
     default: blue
   art:
-    description: Mosaic pixel art next to the title. nisse, none, or your own rows of colour codes (K R G Y B M C W, . for empty) separated by | or newlines.
+    description: Mosaic pixel art next to the title. nisse, pipe-nisse (animated - smokes a pipe, winks and wiggles his eyebrows), none, or your own rows of colour codes (K R G Y B M C W, . for empty) separated by | or newlines.
     default: none
   fastext:
     description: Up to four labels for the red, green, yellow and cyan Fastext keys at the bottom of the page, comma separated.

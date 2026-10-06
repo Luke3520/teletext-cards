@@ -7,7 +7,7 @@ import type { Stats } from '../stats.ts';
 import type { Colour } from '../teletext/palette.ts';
 import { Screen } from '../teletext/screen.ts';
 import { renderSVG } from '../teletext/svg.ts';
-import { artSize } from './art.ts';
+import { NO_ART, artSize, stillArt } from './art.ts';
 import type { Card, CardOptions, Part } from './common.ts';
 import { fit, header } from './common.ts';
 import type { Section } from './sections.ts';
@@ -63,23 +63,30 @@ export function pageCard(stats: Stats, options: CardOptions): Card {
   header(screen, stats, options, s);
 
   // Title band, with the pixel art standing to the right of it.
-  const art = options.art ?? [];
+  const art = options.art ?? NO_ART;
+  const hasArt = art.base.length > 0;
   const size = artSize(art);
   const artCol = screen.cols - 1 - size.cols;
-  const bandEnd = art.length ? artCol - 1 : screen.cols;
+  const bandEnd = hasArt ? artCol - 1 : screen.cols;
   screen.fill(0, 1, bandEnd, 2, accent);
   screen.text(2, 1, fit(title, bandEnd - 3), { fg: onBand(accent), double: true });
-  if (art.length) screen.art(artCol, 1, art);
+  if (hasArt && (options.animate ?? true) && art.layers.length) {
+    screen.art(artCol, 1, art.base);
+    for (const layer of art.layers) screen.layer(artCol, 1, layer.className, layer.lines);
+    screen.css.push(art.css);
+  } else if (hasArt) {
+    screen.art(artCol, 1, stillArt(art));
+  }
 
   let row = 3;
   const hide = new Set<Part>(options.hide ?? []);
-  const textWidth = (art.length ? artCol - 1 : screen.cols - 1) - 2;
+  const textWidth = (hasArt ? artCol - 1 : screen.cols - 1) - 2;
   (options.subtitle ?? []).slice(0, 2).forEach((line, i) => {
     screen.text(2, row++, fit(line, textWidth), { fg: i === 0 ? 'cyan' : 'white' });
     alt.push(line);
   });
   if (!hide.has('since')) screen.text(2, row++, fit(s.since(new Date(stats.createdAt).getUTCFullYear()), textWidth), { fg: 'green' });
-  row = Math.max(row, art.length ? 1 + size.rows : 0) + 1;
+  row = Math.max(row, hasArt ? 1 + size.rows : 0) + 1;
 
   const body = stack(row, [
     (r) => numbersAndOrgs(screen, r, stats, s, hide, 3),

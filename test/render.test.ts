@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
-import { NISSE, resolveArt } from '../src/cards/art.ts';
+import { NISSE, artSize, resolveArt, stillArt } from '../src/cards/art.ts';
 import { fit, packList, percentages } from '../src/cards/common.ts';
 import { CARDS } from '../src/cards/page.ts';
 import type { RawData } from '../src/github/types.ts';
@@ -12,7 +12,7 @@ import { renderSVG } from '../src/teletext/svg.ts';
 
 const demo = JSON.parse(readFileSync(new URL('./fixtures/demo.json', import.meta.url), 'utf8')) as RawData;
 const stats = computeStats(demo);
-const options = { locale: 'en' as const, timeZone: 'Europe/Copenhagen', art: [...NISSE], subtitle: ['Developer <&> tester'] };
+const options = { locale: 'en' as const, timeZone: 'Europe/Copenhagen', art: resolveArt('nisse'), subtitle: ['Developer <&> tester'] };
 
 /** Checks that every tag is closed in order. Enough to catch broken markup. */
 function assertWellFormed(svg: string): void {
@@ -62,6 +62,18 @@ describe('cards', () => {
     assert.equal(height(full.svg) - height(lean.svg), 7 * 20);
     const bare = CARDS.stats(stats, { ...options, hide: ['contributions', 'commits', 'pull_requests', 'reviews', 'repositories', 'orgs'] });
     assert.match(bare.alt, /^\d+ contributions in the last 52 weeks$/);
+  });
+
+  it('animates the pipe nisse in layers, and keeps it still when asked', () => {
+    const moving = CARDS.page(stats, { ...options, art: resolveArt('pipe-nisse') });
+    assertWellFormed(moving.svg);
+    for (const cls of ['na nbl', 'na nblu', 'na nw', 'na ne', 'na np np1']) assert.ok(moving.svg.includes(`class="${cls}"`), cls);
+    assert.match(moving.svg, /@keyframes np\{/);
+    assert.match(moving.svg, /prefers-reduced-motion:reduce\)\{\.na\{animation:none!important\}/);
+    // Smoke is one colour, so its fill sits on the animated group.
+    assert.match(moving.svg, /<g class="na np np1" fill="#fff">/);
+    const still = CARDS.page(stats, { ...options, art: resolveArt('pipe-nisse'), animate: false });
+    assert.doesNotMatch(still.svg, /class="na|@keyframes/);
   });
 
   it('respects reduced motion and can be static', () => {
@@ -132,8 +144,20 @@ describe('layout helpers', () => {
   });
 
   it('reads built-in and custom pixel art', () => {
-    assert.equal(resolveArt('nisse').length, NISSE.length);
-    assert.deepEqual(resolveArt('none'), []);
-    assert.deepEqual(resolveArt('.RR.|RRRR'), ['.RR.', 'RRRR']);
+    assert.deepEqual(resolveArt('nisse').base, [...NISSE]);
+    assert.deepEqual(resolveArt('none').base, []);
+    assert.deepEqual(resolveArt('.RR.|RRRR'), { base: ['.RR.', 'RRRR'], layers: [], css: '' });
+  });
+
+  it('builds the pipe nisse: still picture and size', () => {
+    const art = resolveArt('pipe-nisse');
+    assert.deepEqual(artSize(art), { cols: 8, rows: 6 });
+    const still = stillArt(art);
+    // Resting brows and one puff of smoke are part of the still picture.
+    assert.equal(still[9]!.slice(4, 6), 'WW');
+    assert.equal(still[10]!.slice(13, 15), 'WW');
+    // The wink and raised brows are not.
+    assert.equal(still[10]!.slice(9, 11), 'KY');
+    assert.equal(still[8]!.slice(4, 6), 'YY');
   });
 });

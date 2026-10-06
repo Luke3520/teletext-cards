@@ -100,7 +100,7 @@ own layout:
 | `brand` | your login | Service name in the header row. |
 | `page_number` | `100` | Teletext page number, 100 to 899. |
 | `accent` | `blue` | Colour of the title band: `red`, `green`, `yellow`, `blue`, `magenta`, `cyan` or `white`. |
-| `art` | `none` | Mosaic pixel art next to the title. `nisse`, or your own (see below). |
+| `art` | `none` | Mosaic pixel art next to the title. `nisse`, `pipe-nisse` (animated: smokes a pipe, winks and wiggles his eyebrows), or your own (see below). |
 | `fastext` | | Up to four labels for the red, green, yellow and cyan keys at the bottom. |
 | `locale` | `en` | `en` or `da` (Danish). |
 | `timezone` | `UTC` | Time zone for the header clock, such as `Europe/Copenhagen`. |

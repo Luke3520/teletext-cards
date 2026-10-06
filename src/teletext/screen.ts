@@ -55,6 +55,10 @@ export class Screen {
   readonly cells: Cell[][];
   readonly pixels = new Map<number, MosaicPixel>();
   readonly frames: FrameText[] = [];
+  /** Animated overlays, each drawn in its own group with a CSS class. */
+  readonly layers: Array<{ className: string; pixels: Map<number, MosaicPixel> }> = [];
+  /** Extra CSS for those classes. */
+  readonly css: string[] = [];
 
   constructor(cols: number, rows: number) {
     this.cols = cols;
@@ -70,8 +74,9 @@ export class Screen {
   /** Drops every row from `rows` down. Layouts draw on a tall screen, then crop. */
   crop(rows: number): void {
     this.cells.length = Math.min(this.cells.length, rows);
-    for (const key of this.pixels.keys()) {
-      if (key >= rows * 3 * this.cols * 2) this.pixels.delete(key);
+    const limit = rows * 3 * this.cols * 2;
+    for (const map of [this.pixels, ...this.layers.map((l) => l.pixels)]) {
+      for (const key of map.keys()) if (key >= limit) map.delete(key);
     }
   }
 
@@ -170,10 +175,24 @@ export class Screen {
    * else is transparent.
    */
   art(col: number, row: number, lines: string[], separated = false): void {
+    this.paint(this.pixels, col, row, lines, separated);
+  }
+
+  /** Pixel art in its own layer, animated by the CSS class `className`. */
+  layer(col: number, row: number, className: string, lines: string[]): void {
+    const pixels = new Map<number, MosaicPixel>();
+    this.paint(pixels, col, row, lines, false);
+    this.layers.push({ className, pixels });
+  }
+
+  private paint(target: Map<number, MosaicPixel>, col: number, row: number, lines: string[], separated: boolean): void {
     lines.forEach((line, y) => {
       [...line].forEach((code, x) => {
         const colour = ART_CODES[code.toUpperCase()];
-        if (colour) this.pixel(col * 2 + x, row * 3 + y, colour, separated);
+        const px = col * 2 + x;
+        const py = row * 3 + y;
+        if (!colour || px < 0 || py < 0 || px >= this.cols * 2 || py >= this.rows * 3) return;
+        target.set(py * this.cols * 2 + px, { colour, separated });
       });
     });
   }

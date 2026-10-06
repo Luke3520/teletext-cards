@@ -13,7 +13,7 @@ describe('parseSettings', () => {
     assert.equal(s.card.locale, 'en');
     assert.equal(s.card.timeZone, 'UTC');
     assert.equal(s.card.accent, 'blue');
-    assert.deepEqual(s.card.art, []);
+    assert.deepEqual(s.card.art!.base, []);
     assert.equal(s.stats.languagesBy, 'authorship');
     assert.equal(s.publishBranch, '');
   });
@@ -32,7 +32,7 @@ describe('parseSettings', () => {
       }),
     );
     assert.deepEqual(s.stats.excludeRepos, ['me/old', 'acme/*']);
-    assert.ok(s.card.art!.length > 0);
+    assert.ok(s.card.art!.base.length > 0);
     assert.deepEqual(s.card.subtitle, ['Line one', 'Line two']);
     assert.deepEqual(s.card.fastext, ['A', 'B', 'C', 'D']);
     assert.equal(s.card.accent, 'red');

@@ -1,6 +1,7 @@
 // Shared pieces for the cards: options, text fitting, leader rows, bars.
 
 import type { Locale, Strings } from '../i18n.ts';
+import type { Art } from './art.ts';
 import { clock, formatNumber } from '../i18n.ts';
 import type { Colour } from '../teletext/palette.ts';
 import type { Screen } from '../teletext/screen.ts';
@@ -24,7 +25,7 @@ export interface CardOptions {
   /** Colour of the title band. */
   accent?: Colour;
   /** Mosaic pixel art for the page, already resolved. */
-  art?: string[];
+  art?: Art;
   /** Up to four Fastext labels for the bottom row: red, green, yellow, cyan. */
   fastext?: string[];
   /** Parts to leave out. */
