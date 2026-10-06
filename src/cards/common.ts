@@ -10,6 +10,8 @@ import type { Stats } from '../stats.ts';
 /** Parts of the page and stats cards that `hide` can switch off. */
 export const PARTS = [
   'since',
+  'stars',
+  'visitors',
   'contributions',
   'last_7_days',
   'streak',

@@ -80,13 +80,57 @@ export function organisations(screen: Screen, row: number, stats: Stats, s: Stri
   return { row: row + lines.length, alt: `Organisations: ${items.join(', ')}` };
 }
 
-/** A coloured band with a label on the left and a note on the right. */
-export function band(screen: Screen, row: number, label: string, note: string, colour: Colour = 'blue'): number {
+/**
+ * A coloured band with a label on the left and a note on the right. Several
+ * notes take turns, like teletext subpages.
+ */
+export function band(screen: Screen, row: number, label: string, note: string | string[], colour: Colour = 'blue'): number {
+  const light = colour === 'yellow' || colour === 'cyan' || colour === 'white';
   screen.fill(0, row, screen.cols, 1, colour);
-  screen.text(1, row, label, { fg: colour === 'yellow' || colour === 'cyan' || colour === 'white' ? 'blue' : 'yellow' });
+  screen.text(1, row, label, { fg: light ? 'blue' : 'yellow' });
+  const notes = (Array.isArray(note) ? note : [note]).filter(Boolean);
   const room = screen.cols - len(label) - 4;
-  if (note && room >= 4) screen.textRight(screen.cols - 1, row, fit(note, room), { fg: colour === 'blue' ? 'cyan' : 'white' });
+  if (notes.length && room >= 4) {
+    const fg: Colour = colour === 'blue' ? 'cyan' : light ? 'blue' : 'white';
+    screen.cycle(row, notes.length, (i) => screen.textRight(screen.cols - 1, row, fit(notes[i]!, room), { fg }));
+  }
   return row + 1;
+}
+
+export interface Fact {
+  text: string;
+  colour: Colour;
+  /** For the alt text. */
+  said: string;
+}
+
+/**
+ * Short facts that take turns on one line: since when, stars, and visitors
+ * to your public repositories. Hidden ones are left out, and so are empty
+ * ones: no line about stars until there is one.
+ */
+export function facts(stats: Stats, s: Strings, hide: ReadonlySet<Part>): Fact[] {
+  const out: Fact[] = [];
+  const year = new Date(stats.createdAt).getUTCFullYear();
+  if (!hide.has('since')) out.push({ text: s.since(year), colour: 'green', said: `On GitHub since ${year}` });
+  if (!hide.has('stars') && stats.stars > 0) {
+    const one = stats.starredRepos === 1 && stats.topStarred ? stats.topStarred.name : null;
+    const stars = num(stats.stars, s);
+    out.push({
+      text: s.starsOn(stars, stats.stars, one ?? s.repoCount(stats.starredRepos)),
+      colour: 'yellow',
+      said: `${stars} ${stats.stars === 1 ? 'star' : 'stars'} on ${one ?? `${stats.starredRepos} ${stats.starredRepos === 1 ? 'repository' : 'repositories'}`}`,
+    });
+  }
+  const v = stats.visitors;
+  if (!hide.has('visitors') && v && v.uniques > 0) {
+    out.push({
+      text: s.repoVisitors(num(v.uniques, s), v.uniques),
+      colour: 'cyan',
+      said: `${num(v.uniques, s)} ${v.uniques === 1 ? 'visitor' : 'visitors'} to public repositories in the last 14 days (${num(v.views, s)} views)`,
+    });
+  }
+  return out;
 }
 
 /** Language bars, scaled to the biggest language, with whole percentages. */

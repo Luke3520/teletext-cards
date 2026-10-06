@@ -9,7 +9,7 @@ import { GLYPHS } from './glyphs.ts';
 import { PALETTE } from './palette.ts';
 import type { Colour } from './palette.ts';
 import { CELL_H, CELL_W, SEXTANT_ROWS } from './screen.ts';
-import type { Cell, MosaicPixel, Screen, TextStyle } from './screen.ts';
+import type { Cell, MosaicPixel, Screen, Subpages, TextStyle } from './screen.ts';
 
 export interface RenderOptions {
   /** Accessible name: the first thing a screen reader says. */
@@ -160,6 +160,33 @@ function drawPixels(pixels: ReadonlyMap<number, MosaicPixel>, cols: number, row:
   }
 }
 
+function sameText(a: Cell, b: Cell): boolean {
+  return a.ch === b.ch && a.fg === b.fg && a.double === b.double && a.flash === b.flash && a.covered === b.covered;
+}
+
+/**
+ * A row's subpages, each in its own group, with what they share drawn once
+ * elsewhere. They take turns by opacity rather than visibility, so they stay
+ * hidden with their row until the page has arrived.
+ */
+function subpageGroups(sp: Subpages, id: string, glyphs: Glyphs): { svg: string; css: string; varying: Set<number> } {
+  const first = sp.pages[0]!;
+  const varying = new Set(first.map((_, c) => c).filter((c) => sp.pages.some((page) => !sameText(page[c]!, first[c]!))));
+  const loop = sp.pages.length * sp.hold;
+  let svg = '';
+  sp.pages.forEach((page, i) => {
+    const layer = new Layer();
+    for (const c of varying) if (!page[c]!.covered) drawText(layer, glyphs, page[c]!, c, sp.row);
+    // The first one is what shows when nothing moves.
+    const style = i === 0 ? 'opacity:1' : `animation-delay:-${n(loop - i * sp.hold)}s`;
+    svg += `<g class="tt-sp ${id}" style="${style}">${layer}</g>`;
+  });
+  const css =
+    `.${id}{opacity:0;animation:${id} ${n(loop)}s steps(1) infinite}` +
+    `@keyframes ${id}{0%{opacity:1}${n(100 / sp.pages.length)}%{opacity:0}100%{opacity:0}}`;
+  return { svg, css, varying };
+}
+
 function frameGroups(screen: Screen, glyphs: Glyphs, animate: boolean): { svg: string; duration: number } {
   let svg = '';
   let duration = 0;
@@ -213,15 +240,19 @@ export function renderSVG(screen: Screen, options: RenderOptions): string {
   // row below and must not be painted over by that row's background.
   let backgrounds = '';
   let foregrounds = '';
+  const turns: string[] = [];
   for (let r = 0; r < screen.rows; r++) {
     const text = new Layer();
     const mosaic = new Layer();
+    const sp = animate ? screen.subpages.find((x) => x.row === r) : undefined;
+    const pages = sp ? subpageGroups(sp, `${p}-sp${turns.length}`, glyphs) : undefined;
+    if (pages) turns.push(pages.css);
     screen.cells[r]!.forEach((cell, c) => {
-      if (!cell.covered) drawText(text, glyphs, cell, c, r);
+      if (!cell.covered && !pages?.varying.has(c)) drawText(text, glyphs, cell, c, r);
     });
     drawPixels(screen.pixels, screen.cols, r, mosaic);
     backgrounds += rowGroup(r, drawBackgrounds(screen, r));
-    foregrounds += rowGroup(r, `${mosaic}${text}`);
+    foregrounds += rowGroup(r, `${mosaic}${text}${pages?.svg ?? ''}`);
   }
   // Animated art layers. A one-colour layer carries its fill on the animated
   // group itself, so keyframes can change the colour.
@@ -241,7 +272,8 @@ export function renderSVG(screen: Screen, options: RenderOptions): string {
         `.tt-frame{visibility:hidden;animation-name:tt-show;animation-timing-function:steps(1)}` +
         `@keyframes tt-hide{from,to{visibility:hidden}}@keyframes tt-show{from,to{visibility:visible}}`,
     animate && `.tt-fl{animation:tt-flash 1s steps(1) infinite}@keyframes tt-flash{75%{opacity:0}}`,
-    animate && `@media (prefers-reduced-motion:reduce){.tt-a,.tt-fl{animation:none!important}}`,
+    animate && `@media (prefers-reduced-motion:reduce){.tt-a,.tt-fl,.tt-sp{animation:none!important}}`,
+    ...turns,
     ...(animate ? screen.css : []),
   ]
     .filter(Boolean)

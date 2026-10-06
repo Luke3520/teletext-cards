@@ -35,8 +35,12 @@ describe('contributionWindows', () => {
 /** A fake client that answers by query name and records what was asked. */
 let reposQuery = '';
 
-function fakeClient(answer: (name: string, variables: Record<string, unknown>, query: string) => unknown) {
+function fakeClient(
+  answer: (name: string, variables: Record<string, unknown>, query: string) => unknown,
+  rest: (path: string) => { status: number; data: unknown } = () => ({ status: 404, data: null }),
+) {
   const calls: Array<{ name: string; variables: Record<string, unknown> }> = [];
+  const gets: string[] = [];
   const client = {
     async query<T>(query: string, variables: Record<string, unknown> = {}): Promise<GraphQLResponse<T>> {
       const name = /query (\w+)/.exec(query)![1]!;
@@ -44,8 +48,12 @@ function fakeClient(answer: (name: string, variables: Record<string, unknown>, q
       if (name === 'Repos') reposQuery = query;
       return { data: answer(name, variables, query) as T };
     },
+    async get<T>(path: string): Promise<{ status: number; data: T | null }> {
+      gets.push(path);
+      return rest(path) as { status: number; data: T | null };
+    },
   } as unknown as GitHubClient;
-  return { client, calls };
+  return { client, calls, gets };
 }
 
 const emptyWindow = {
@@ -179,6 +187,54 @@ describe('collect', () => {
     });
     const data = await collect(client, { login: 'me', now: new Date('2026-10-06T00:00:00Z') });
     assert.equal(data.access, undefined);
+  });
+
+  describe('traffic', () => {
+    /** A user who owns two public repositories and a private one, and nothing else. */
+    const owner = (name: string) => {
+      if (name === 'Profile') {
+        return {
+          user: {
+            id: 'U1', login: 'me', name: null, createdAt: '2026-10-01T00:00:00Z',
+            followers: { totalCount: 0 }, pullRequests: { totalCount: 0 }, merged: { totalCount: 0 }, issues: { totalCount: 0 },
+          },
+        };
+      }
+      if (name === 'Owned') {
+        const repo = (n: string, isPrivate = false) => ({ nameWithOwner: n, isPrivate, isArchived: false, stargazerCount: 0 });
+        return { user: { repositories: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [repo('me/one'), repo('me/two'), repo('me/secret', true)] } } };
+      }
+      if (name === 'Window') return { user: { contributionsCollection: { ...emptyWindow, commitContributionsByRepository: [] } } };
+      if (name === 'PullRequests') return { user: { pullRequests: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } };
+      return {};
+    };
+    const now = new Date('2026-10-06T00:00:00Z');
+
+    it('reads the visitors of your public repositories, when asked', async () => {
+      const views: Record<string, { count: number; uniques: number }> = { one: { count: 10, uniques: 4 }, two: { count: 3, uniques: 2 } };
+      const { client, gets } = fakeClient(owner, (path) => ({ status: 200, data: views[/\/me\/(\w+)\/traffic\/views$/.exec(path)![1]!] }));
+      const data = await collect(client, { login: 'me', now, traffic: true });
+      assert.deepEqual(data.traffic, {
+        repos: [
+          { nameWithOwner: 'me/one', views: 10, uniques: 4 },
+          { nameWithOwner: 'me/two', views: 3, uniques: 2 },
+        ],
+        denied: 0,
+      });
+      // Private repositories only get visits from people who already have access.
+      assert.deepEqual(gets, ['/repos/me/one/traffic/views', '/repos/me/two/traffic/views']);
+      // Not asked, not fetched.
+      const quiet = fakeClient(owner);
+      assert.equal((await collect(quiet.client, { login: 'me', now })).traffic, undefined);
+      assert.deepEqual(quiet.gets, []);
+    });
+
+    it('asks once when the token may not read traffic', async () => {
+      const { client, gets } = fakeClient(owner, () => ({ status: 403, data: null }));
+      const data = await collect(client, { login: 'me', now, traffic: true });
+      assert.deepEqual(data.traffic, { repos: [], denied: 2 });
+      assert.equal(gets.length, 1);
+    });
   });
 
   it('explains a missing user', async () => {

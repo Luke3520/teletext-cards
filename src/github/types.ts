@@ -64,6 +64,21 @@ export interface RepoDetail extends RepoRef {
   lastCommitAt?: string | null;
 }
 
+/** GitHub's traffic numbers for one repository, over the last 14 days. */
+export interface RepoTraffic {
+  nameWithOwner: string;
+  views: number;
+  /** Unique visitors. */
+  uniques: number;
+}
+
+/** Traffic for the user's public repositories, if the token may read it. */
+export interface TrafficData {
+  repos: RepoTraffic[];
+  /** Repositories whose traffic the token was not allowed to read. */
+  denied: number;
+}
+
 export interface RawData {
   fetchedAt: string;
   user: {
@@ -83,6 +98,8 @@ export interface RawData {
   /** What the token can see, for diagnosing missing private work. Counts only. */
   access?: TokenAccess;
   repos: RepoDetail[];
+  /** Only fetched when the visitors line is wanted. */
+  traffic?: TrafficData;
 }
 
 export interface TokenAccess {

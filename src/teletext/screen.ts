@@ -41,6 +41,15 @@ export interface FrameText {
   slot: number;
 }
 
+/** A row that takes turns showing different text, like teletext subpages. */
+export interface Subpages {
+  row: number;
+  /** The row's cells as each subpage draws them. */
+  pages: Cell[][];
+  /** Seconds each subpage stays on screen. */
+  hold: number;
+}
+
 export const CELL_W = 6;
 export const CELL_H = 10;
 /** Pixel offsets and heights of the three sextant rows inside a cell. */
@@ -59,6 +68,8 @@ export class Screen {
   readonly layers: Array<{ className: string; pixels: Map<number, MosaicPixel> }> = [];
   /** Extra CSS for those classes. */
   readonly css: string[] = [];
+  /** Rows that cycle through subpages. */
+  readonly subpages: Subpages[] = [];
 
   constructor(cols: number, rows: number) {
     this.cols = cols;
@@ -78,6 +89,7 @@ export class Screen {
     for (const map of [this.pixels, ...this.layers.map((l) => l.pixels)]) {
       for (const key of map.keys()) if (key >= limit) map.delete(key);
     }
+    for (let i = this.subpages.length - 1; i >= 0; i--) if (this.subpages[i]!.row >= rows) this.subpages.splice(i, 1);
   }
 
   private cell(col: number, row: number): Cell | undefined {
@@ -125,6 +137,24 @@ export class Screen {
         if (cell) cell.bg = bg;
       }
     }
+  }
+
+  /**
+   * Makes a row take turns showing `count` versions of itself, like teletext
+   * subpages: `draw(i)` draws version i on the row. Only the text changes;
+   * the colours behind it stay. A still picture shows the first version.
+   */
+  cycle(row: number, count: number, draw: (i: number) => void, hold = 4): void {
+    const start = this.cells[row];
+    if (!start || count < 1) return;
+    const pages: Cell[][] = [];
+    for (let i = 0; i < count; i++) {
+      this.cells[row] = start.map((c) => ({ ...c }));
+      draw(i);
+      pages.push(this.cells[row]!);
+    }
+    this.cells[row] = pages[0]!.map((c) => ({ ...c }));
+    if (count > 1) this.subpages.push({ row, pages, hold });
   }
 
   /** Text that rolls through `frames` on load (the page-search counter). */

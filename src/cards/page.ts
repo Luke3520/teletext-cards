@@ -11,7 +11,7 @@ import { NO_ART, artSize, stillArt } from './art.ts';
 import type { Card, CardOptions, Part } from './common.ts';
 import { fit, header } from './common.ts';
 import type { Section } from './sections.ts';
-import { activity, band, fastext, languages, numbers, organisations, recent } from './sections.ts';
+import { activity, band, facts, fastext, languages, numbers, organisations, recent } from './sections.ts';
 
 /** Text colour that reads well on a band of the given colour. */
 function onBand(colour: Colour): Colour {
@@ -85,7 +85,13 @@ export function pageCard(stats: Stats, options: CardOptions): Card {
     screen.text(2, row++, fit(line, textWidth), { fg: i === 0 ? 'cyan' : 'white' });
     alt.push(line);
   });
-  if (!hide.has('since')) screen.text(2, row++, fit(s.since(new Date(stats.createdAt).getUTCFullYear()), textWidth), { fg: 'green' });
+  // Since when, stars and repo visitors take turns on one line.
+  const lines = facts(stats, s, hide);
+  if (lines.length) {
+    const r = row++;
+    screen.cycle(r, lines.length, (i) => screen.text(2, r, fit(lines[i]!.text, textWidth), { fg: lines[i]!.colour }));
+    alt.push(...lines.map((l) => l.said));
+  }
   row = Math.max(row, hasArt ? 1 + size.rows : 0) + 1;
 
   const body = stack(row, [
@@ -108,13 +114,13 @@ export function statsCard(stats: Stats, options: CardOptions): Card {
   const title = options.title ?? stats.name ?? stats.login;
   header(screen, stats, { ...options, pageNumber: (options.pageNumber ?? 100) + 1 }, s);
   const hide = new Set<Part>(options.hide ?? []);
-  const since = hide.has('since') ? '' : s.since(new Date(stats.createdAt).getUTCFullYear());
-  const row = band(screen, 1, fit(title.toUpperCase(), 30), since, options.accent ?? 'blue');
+  const lines = facts(stats, s, hide);
+  const row = band(screen, 1, fit(title.toUpperCase(), 30), lines.map((l) => l.text), options.accent ?? 'blue');
   const body = stack(row + 1, [
     (r) => numbersAndOrgs(screen, r, stats, s, hide, 2),
     (r) => (hide.has('activity') ? { row: r, alt: '' } : activity(screen, r, stats, s)),
   ]);
-  return finish('stats', screen, body.row, `${title}: GitHub stats`, body.alt, options);
+  return finish('stats', screen, body.row, `${title}: GitHub stats`, [...lines.map((l) => l.said), ...body.alt], options);
 }
 
 /** Just the language bars. */

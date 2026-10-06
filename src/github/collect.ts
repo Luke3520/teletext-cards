@@ -7,7 +7,7 @@
 // walk back one year at a time to the day the account was created.
 
 import type { GitHubClient } from './client.ts';
-import type { ContributionWindow, ForkWork, OwnedRepo, RawData, RepoDetail, RepoRef, TokenAccess } from './types.ts';
+import type { ContributionWindow, ForkWork, OwnedRepo, RawData, RepoDetail, RepoRef, RepoTraffic, TokenAccess, TrafficData } from './types.ts';
 
 const DAY = 86_400_000;
 
@@ -154,6 +154,8 @@ export interface CollectOptions {
   login: string;
   now?: Date;
   log?: (message: string) => void;
+  /** Also read the traffic (visitors) of the user's public repositories. */
+  traffic?: boolean;
 }
 
 export async function collect(client: GitHubClient, options: CollectOptions): Promise<RawData> {
@@ -212,6 +214,8 @@ export async function collect(client: GitHubClient, options: CollectOptions): Pr
   const repos = await fetchDetails(client, user.id, [...refs.values()]);
   log(`${repos.length} repositories with contributions or owned, ${repos.filter((r) => r.owner.login !== user.login).length} of them owned by others`);
 
+  const traffic = options.traffic ? await fetchTraffic(client, ownedRepos.filter((r) => !r.isPrivate)) : undefined;
+
   return {
     fetchedAt: now.toISOString(),
     user: {
@@ -229,7 +233,36 @@ export async function collect(client: GitHubClient, options: CollectOptions): Pr
     forks,
     access,
     repos,
+    traffic,
   };
+}
+
+const TRAFFIC_BATCH = 5;
+
+/**
+ * GitHub's own visitor numbers for the last 14 days. Only people with push
+ * access may read them, so one repository is asked first: if that is
+ * refused, so would every other one be.
+ */
+async function fetchTraffic(client: GitHubClient, repos: OwnedRepo[]): Promise<TrafficData> {
+  const found: RepoTraffic[] = [];
+  let denied = 0;
+  for (let i = 0; i < repos.length; ) {
+    const batch = repos.slice(i, i === 0 ? 1 : i + TRAFFIC_BATCH);
+    i += batch.length;
+    const answers = await Promise.all(
+      batch.map((r) => {
+        const [owner, name] = r.nameWithOwner.split('/') as [string, string];
+        return client.get<{ count: number; uniques: number }>(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/traffic/views`);
+      }),
+    );
+    answers.forEach(({ status, data }, k) => {
+      if (data) found.push({ nameWithOwner: batch[k]!.nameWithOwner, views: data.count, uniques: data.uniques });
+      else if (status === 403) denied++;
+    });
+    if (found.length === 0 && denied > 0) return { repos: [], denied: repos.length };
+  }
+  return { repos: found, denied };
 }
 
 /** Counts what the token can see. Only for the log; never fails the run. */

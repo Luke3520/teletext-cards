@@ -53,7 +53,8 @@ describe('parseSettings', () => {
     assert.deepEqual(parseHide('PRs, repos, pull-requests, Since'), ['pull_requests', 'repositories', 'pull_requests', 'since']);
     assert.deepEqual(parseHide('this week, streaks, recent-work, last_7_days'), ['last_7_days', 'streak', 'recent', 'last_7_days']);
     assert.deepEqual(parseHide(''), []);
-    assert.throws(() => parseHide('stars'), /unknown part "stars"/);
+    assert.deepEqual(parseHide('star, visits, traffic'), ['stars', 'visitors', 'visitors']);
+    assert.throws(() => parseHide('followers'), /unknown part "followers"/);
     assert.deepEqual(parseSettings(from({ username: 'x', hide: 'orgs' })).card.hide, ['orgs']);
   });
 

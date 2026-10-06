@@ -53,7 +53,9 @@ export async function run(settings: Settings, options: RunOptions = {}): Promise
     log(`using fixture ${options.fixture}`);
   } else {
     const client = new GitHubClient(settings.token, { log });
-    raw = await collect(client, { login: settings.username, log });
+    // Traffic takes one request per repository, so only when it will be shown.
+    const traffic = !(settings.card.hide ?? []).includes('visitors') && settings.cards.some((c) => c !== 'languages');
+    raw = await collect(client, { login: settings.username, log, traffic });
   }
   if (options.saveRaw) writeFileSync(options.saveRaw, JSON.stringify(raw));
 
@@ -86,6 +88,26 @@ export async function run(settings: Settings, options: RunOptions = {}): Promise
   );
   if (stats.unmatchedOrgs.length) {
     log(`warning: orgs lists ${stats.unmatchedOrgs.join(', ')}, but you have no contributions there that this token can see`);
+  }
+  log(
+    `stars: ${stats.stars} on ${stats.starredRepos} of your repositories` +
+      (stats.topStarred ? ` (most: ${stats.topStarred.name}, ${stats.topStarred.stars})` : ''),
+  );
+  if (raw.traffic) {
+    const v = stats.visitors;
+    if (v) {
+      log(
+        `repo visitors, last 14 days: ${v.uniques} (unique visitors of each repository, added up), ${v.views} views, ` +
+          `across ${v.repos} public repositories you own${v.top ? ` (most: ${v.top.name}, ${v.top.uniques})` : ''}`,
+      );
+    } else if (raw.traffic.denied) {
+      log(
+        'repo visitors: left out, because this token may not read traffic. That takes push access to your repositories: ' +
+          'a classic token with the repo scope, or a fine-grained token with "Administration: Read-only". The default github.token never can.',
+      );
+    } else {
+      log('repo visitors: you have no public repositories to count');
+    }
   }
   log(
     `last 7 days: ${stats.last7Days} contributions` +

@@ -89,7 +89,7 @@ too, if you would rather build your own layout:
 
 | Input | Default | What it does |
 |---|---|---|
-| `github_token` | `${{ github.token }}` | API token. The default sees all public work, including public organisation repos. See [private work](#counting-private-work). |
+| `github_token` | `${{ github.token }}` | API token. The default sees all public work, including public organisation repos. See [private work](#counting-private-work) and [repo visitors](#repo-visitors). |
 | `username` | repository owner | Whose cards to draw. |
 | `cards` | `page,stats,languages` | Which cards to draw. |
 | `output_dir` | `teletext-cards` | Where to write the SVGs. |
@@ -107,7 +107,7 @@ too, if you would rather build your own layout:
 | `languages_by` | `authorship` | `authorship`, `commits` or `bytes` (the classic method). |
 | `languages_count` | `5` | Languages listed before the rest become *Other*. |
 | `orgs` | | Choose the ORGS line, comma separated. `name` shows that organisation first (even a private one), `name=Label` renames it too, `-name` hides it. The rest follow, busiest first. |
-| `hide` | | Parts to leave out, comma separated: `since`, `contributions`, `last_7_days`, `streak`, `commits`, `pull_requests`, `reviews`, `repositories`, `orgs`, `languages`, `recent` (recent work, on the page), `activity` (the 52-week graph, on the stats card). Everything shows unless you hide it. |
+| `hide` | | Parts to leave out, comma separated: `since`, `stars`, `visitors`, `contributions`, `last_7_days`, `streak`, `commits`, `pull_requests`, `reviews`, `repositories`, `orgs`, `languages`, `recent` (recent work, on the page), `activity` (the 52-week graph, on the stats card). Everything shows unless you hide it. |
 | `exclude_repos` | | `owner/name` or `owner/*`, comma separated. |
 | `exclude_languages` | | Language names, comma separated. |
 | `animate` | `true` | The page arrives row by row and the clock blinks. Off for anyone who prefers reduced motion. |
@@ -134,6 +134,9 @@ art: |
 
 | On the card | Where it comes from |
 |---|---|
+| The line under the title | Takes turns, a few seconds each, like teletext subpages: since when you are on GitHub, your stars, and your repo visitors. A still picture, or a viewer who prefers less motion, gets the first. |
+| Stars | Stars on the repositories you own. Left out until you have one. |
+| Repo visitors | Unique visitors of your public repositories over the last 14 days, from GitHub's own traffic numbers. See [repo visitors](#repo-visitors). |
 | Contributions | Every day in your contribution calendars since you joined, so it matches your profile graph. Includes anonymous private contributions if you show them on your profile. |
 | Last 7 days | Your contributions today and in the 6 days before. Until you have done something today, the 7 days before today, so a morning run compares whole days. Compared with an ordinary week: the average of the 12 weeks before (fewer for a new account). More than a quarter above or below it is *more* or *less than usual*. |
 | Streak | Days in a row with a contribution, up to today (an empty today does not break it yet), and the longest run since you joined. |
@@ -173,6 +176,29 @@ token: it shows up only as an anonymous count. When that happens, the action
 reads the commit history of every private repository the token can open,
 including your organisations' repositories, and counts your commits there
 directly.
+
+## Repo visitors
+
+GitHub does not tell anyone who looks at a profile page, so no card can count
+profile views honestly. View-counter badges count every time their image
+loads, your own visits included, on someone else's server.
+
+What GitHub does count is each repository's traffic: page views and unique
+visitors over the last 14 days. The line under the title shows the unique
+visitors of your public repositories, added up, so someone who looks at two
+of them counts twice. Private repositories are left out: only people who
+already have access can visit them.
+
+Only people with push access may read traffic, so the default `github.token`
+cannot. Either of these can:
+
+- a classic personal access token with the `repo` scope (the token for
+  [private work](#counting-private-work) already has it), or
+- a fine-grained token with **Administration: Read-only** on your repositories.
+
+Without one, the visitors stay off the card and the log says why. To leave a
+repository out of the count, add it to `exclude_repos`. To drop the visitors
+altogether, add `visitors` to `hide`.
 
 ## Run it locally
 

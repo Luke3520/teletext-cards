@@ -25,6 +25,23 @@ const ranges: Array<[number, number]> = [
 ];
 const extras = '‘’“”–—…•←→↑↓€™★☆♥●○■□▲▼►◄✓✗';
 
+// Symbols Bedstead does not have. A five-pointed star, about as wide as a
+// letter and centred on capital height (letters fill x 1-6, y 1-8). Drawn
+// with straight edges, the way Bedstead smooths its diagonals.
+function star(radius: number, inner: number, cx: number, cy: number): string {
+  const points: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+    const r = i % 2 ? radius * inner : radius;
+    points.push(`${num(cx + r * Math.cos(angle))} ${num(cy + r * Math.sin(angle))}`);
+  }
+  return `M${points.join('L')}Z`;
+}
+
+const DRAWN: Readonly<Record<string, string>> = {
+  '★': star(2.9, 0.45, 3.5, 4.78),
+};
+
 const wanted: string[] = [];
 for (const [from, to] of ranges) {
   for (let cp = from; cp <= to; cp++) {
@@ -87,7 +104,7 @@ function toPath(ch: string): string | null {
 const entries: string[] = [];
 const missing: string[] = [];
 for (const ch of wanted) {
-  const d = toPath(ch);
+  const d = toPath(ch) ?? DRAWN[ch] ?? null;
   if (d === null) missing.push(ch);
   else entries.push(`  ${JSON.stringify(ch)}: ${JSON.stringify(d)},`);
 }

@@ -63,7 +63,7 @@ describe('cards', () => {
     assert.equal(height(full.svg) - height(lean.svg), 9 * 20);
     const bare = CARDS.stats(stats, {
       ...options,
-      hide: ['contributions', 'last_7_days', 'streak', 'commits', 'pull_requests', 'reviews', 'repositories', 'orgs'],
+      hide: ['since', 'stars', 'visitors', 'contributions', 'last_7_days', 'streak', 'commits', 'pull_requests', 'reviews', 'repositories', 'orgs'],
     });
     assert.match(bare.alt, /^\d+ contributions in the last 52 weeks$/);
   });
@@ -76,6 +76,24 @@ describe('cards', () => {
     assert.match(CARDS.stats(stats, options).alt, /contributions in the last 52 weeks$/);
     const named = computeStats(demo, { orgs: { pin: [{ login: 'secret-co', label: 'Secret Co' }], hide: [] } });
     assert.match(CARDS.page(named, options).alt, /a private Secret Co repository 02 Oct$/);
+  });
+
+  it('takes turns showing since when, stars and repo visitors', () => {
+    const page = CARDS.page(stats, options);
+    assert.match(page.alt, /On GitHub since 2022\. 40 stars on 3 repositories\. 77 visitors to public repositories in the last 14 days \(374 views\)\./);
+    // Three subpages, four seconds each; the first is what a still picture shows.
+    assert.match(page.svg, /\.p-sp0\{opacity:0;animation:p-sp0 12s steps\(1\) infinite\}@keyframes p-sp0\{0%\{opacity:1\}33\.33%\{opacity:0\}100%\{opacity:0\}\}/);
+    assert.equal((page.svg.match(/<g class="tt-sp p-sp0" style="(opacity:1|animation-delay:-8s|animation-delay:-4s)">/g) ?? []).length, 3);
+    assert.match(page.svg, /\.tt-a,\.tt-fl,\.tt-sp\{animation:none!important\}/);
+    // The stats card turns its band note the same way.
+    assert.match(CARDS.stats(stats, options).svg, /class="tt-sp s-sp0"/);
+    // Still, it shows the first. Hidden or empty facts drop out of the turns.
+    assert.doesNotMatch(CARDS.page(stats, { ...options, animate: false }).svg, /class="tt-sp/);
+    const plain = CARDS.page(stats, { ...options, hide: ['stars', 'visitors'] });
+    assert.doesNotMatch(plain.svg, /class="tt-sp/);
+    assert.doesNotMatch(plain.alt, /stars|visitors/);
+    const starless = computeStats({ ...demo, ownedRepos: demo.ownedRepos.map((r) => ({ ...r, stargazerCount: 0 })), traffic: undefined });
+    assert.doesNotMatch(CARDS.page(starless, options).alt, /stars|visitors/);
   });
 
   it('animates the pipe nisse in layers, and keeps it still when asked', () => {
@@ -115,6 +133,20 @@ describe('renderSVG', () => {
     const svg = renderSVG(screen, { title: 't', description: 'd', animate: false, crt: false });
     assert.equal((svg.match(/<path id=/g) ?? []).length, 2);
     assert.match(svg, /id="ttg3f"/);
+  });
+
+  it('draws subpages apart, and what they share only once', () => {
+    const screen = new Screen(6, 1);
+    screen.cycle(0, 2, (i) => screen.text(0, 0, i ? 'AB 2/2' : 'AC 1/2'));
+    assert.equal(screen.cells[0]!.map((c) => c.ch).join(''), 'AC 1/2');
+    const svg = renderSVG(screen, { title: 't', description: 'd', animate: true, crt: false });
+    // A and "/2" are the same on both, so they are drawn once, outside the turns.
+    assert.equal((svg.match(/href="#ttg41"/g) ?? []).length, 1);
+    assert.equal((svg.match(/href="#ttg2f"/g) ?? []).length, 1);
+    const turns = svg.match(/<g class="tt-sp tt-sp0"[^>]*>.*?<\/g><\/g>/g) ?? [];
+    assert.equal(turns.length, 2);
+    assert.match(turns[0]!, /ttg43/);
+    assert.match(turns[1]!, /ttg42/);
   });
 
   it('merges runs of contiguous mosaic pixels', () => {

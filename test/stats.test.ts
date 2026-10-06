@@ -186,6 +186,26 @@ describe('computeStats', () => {
     assert.equal(computeStats(raw([])).stars, 3);
   });
 
+  it('counts stars on your own repositories, naming only public ones', () => {
+    const stats = computeStats(demo);
+    assert.equal(stats.stars, 40);
+    assert.equal(stats.starredRepos, 3);
+    assert.deepEqual(stats.topStarred, { name: 'fjord-tracker', stars: 31 });
+    const secret = computeStats({ ...demo, ownedRepos: demo.ownedRepos.map((r) => ({ ...r, isPrivate: true })) });
+    assert.equal(secret.stars, 40);
+    assert.equal(secret.topStarred, null);
+    assert.equal(computeStats(demo, { excludeRepos: ['teletext-demo/fjord-tracker'] }).stars, 9);
+  });
+
+  it('adds up repo visitors from GitHub traffic, when there is any', () => {
+    const stats = computeStats(demo);
+    assert.deepEqual(stats.visitors, { uniques: 77, views: 374, repos: 4, top: { name: 'fjord-tracker', uniques: 51 } });
+    assert.equal(computeStats(demo, { excludeRepos: ['teletext-demo/hygge-hub'] }).visitors!.uniques, 60);
+    // Not fetched, or the token may not read it.
+    assert.equal(computeStats({ ...demo, traffic: undefined }).visitors, null);
+    assert.equal(computeStats({ ...demo, traffic: { repos: [], denied: 4 } }).visitors, null);
+  });
+
   it('compares the last 7 days with an ordinary week', () => {
     const days = (from: string, to: string, count: number): Array<[string, number]> => {
       const out: Array<[string, number]> = [];

@@ -90,7 +90,18 @@ export interface Stats {
    */
   recoveredPrivateRepos: number;
   ownedRepos: number;
+  /** Stars on the repositories the user owns. */
   stars: number;
+  /** How many of them have any. */
+  starredRepos: number;
+  /** The public one with the most. */
+  topStarred: { name: string; stars: number } | null;
+  /**
+   * GitHub's traffic numbers for the user's public repositories, last 14
+   * days: unique visitors of each repository, added up, and page views. Null
+   * when they were not fetched or the token may not read them.
+   */
+  visitors: { uniques: number; views: number; repos: number; top: { name: string; uniques: number } | null } | null;
   /** Repositories you own or worked on: owned plus contributed, counted once. */
   repos: number;
   /** Repositories with at least one contribution, all time, whoever owns them. Includes team forks. */
@@ -315,6 +326,13 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
   const owned = raw.ownedRepos.filter((r) => !excluded(r.nameWithOwner));
   const included = raw.repos.filter((r) => !excluded(r.nameWithOwner));
 
+  const starred = owned.filter((r) => r.stargazerCount > 0);
+  const top = starred
+    .filter((r) => !r.isPrivate)
+    .sort((a, b) => b.stargazerCount - a.stargazerCount || a.nameWithOwner.localeCompare(b.nameWithOwner))[0];
+  const traffic = (raw.traffic?.repos ?? []).filter((t) => !excluded(t.nameWithOwner));
+  const busiest = [...traffic].sort((a, b) => b.uniques - a.uniques || a.nameWithOwner.localeCompare(b.nameWithOwner))[0];
+
   return {
     login,
     name: raw.user.name,
@@ -331,6 +349,16 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
     recoveredPrivateRepos: recoveredRepos,
     ownedRepos: owned.length,
     stars: owned.reduce((t, r) => t + r.stargazerCount, 0),
+    starredRepos: starred.length,
+    topStarred: top ? { name: top.nameWithOwner.split('/')[1]!, stars: top.stargazerCount } : null,
+    visitors: traffic.length
+      ? {
+          uniques: traffic.reduce((t, r) => t + r.uniques, 0),
+          views: traffic.reduce((t, r) => t + r.views, 0),
+          repos: traffic.length,
+          top: busiest && busiest.uniques > 0 ? { name: busiest.nameWithOwner.split('/')[1]!, uniques: busiest.uniques } : null,
+        }
+      : null,
     repos: new Set([...owned.map((r) => r.nameWithOwner.toLowerCase()), ...[...touched.keys()].map((k) => k.toLowerCase())]).size,
     contributedRepos: touched.size,
     contributedReposNotOwned: [...touched.values()].filter((t) => t.ref.owner.login.toLowerCase() !== lower).length,

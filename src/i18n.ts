@@ -34,6 +34,11 @@ export interface Strings {
   privateRepo: string;
   today: string;
   yesterday: string;
+  /** "★ 12 stars on 3 repos", "★ 1 star on teletext-cards". */
+  starsOn: (stars: string, n: number, where: string) => string;
+  repoCount: (n: number) => string;
+  /** Unique visitors of the user's public repositories in the last 14 days. */
+  repoVisitors: (visitors: string, n: number) => string;
 }
 
 export const STRINGS: Readonly<Record<Locale, Strings>> = {
@@ -68,6 +73,9 @@ export const STRINGS: Readonly<Record<Locale, Strings>> = {
     privateRepo: 'private repo',
     today: 'today',
     yesterday: 'yesterday',
+    starsOn: (stars, n, where) => `★ ${stars} ${n === 1 ? 'star' : 'stars'} on ${where}`,
+    repoCount: (n) => `${n} ${n === 1 ? 'repo' : 'repos'}`,
+    repoVisitors: (visitors, n) => `${visitors} repo ${n === 1 ? 'visitor' : 'visitors'} in 14 days`,
   },
   da: {
     numberLocale: 'da-DK',
@@ -100,6 +108,9 @@ export const STRINGS: Readonly<Record<Locale, Strings>> = {
     privateRepo: 'privat repo',
     today: 'i dag',
     yesterday: 'i går',
+    starsOn: (stars, n, where) => `★ ${stars} ${n === 1 ? 'stjerne' : 'stjerner'} på ${where}`,
+    repoCount: (n) => `${n} repos`,
+    repoVisitors: (visitors) => `${visitors} repo-besøgende på 14 dage`,
   },
 };
 
