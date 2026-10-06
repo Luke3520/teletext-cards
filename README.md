@@ -134,7 +134,7 @@ art: |
 | Repositories | Repositories with at least one of your contributions, plus the ones you own. *org/team* is how many belong to an organisation or another person. |
 | Orgs | Organisations owning a public repository you contributed to, busiest first. |
 | Languages | See `languages_by` above. Forks are skipped: their code belongs to the upstream project. |
-| 52 weeks | Your contributions per week over the last year, one mosaic column per week. |
+| 52 weeks | Your contributions per week over the last year, one mosaic column per week, on a square-root scale so quiet weeks still show next to a busy one. |
 
 GitHub only counts a commit as yours if its author email is linked to your
 account. If old commits are missing, add that email under

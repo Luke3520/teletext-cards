@@ -91,10 +91,14 @@ export function languages(screen: Screen, row: number, stats: Stats, s: Strings)
   return { row, alt: `Languages, ${s.languagesBy[stats.languagesBy]}: ${stats.languages.map((l, i) => `${l.name} ${pct[i]}%`).join(', ')}` };
 }
 
-/** The last 52 weeks as separated-mosaic bars, one sextant column per week. */
+/**
+ * The last 52 weeks as separated-mosaic bars, one sextant column per week.
+ * Heights follow a square root, so one busy sprint does not flatten every
+ * other week into the baseline.
+ */
 export function activity(screen: Screen, row: number, stats: Stats, s: Strings): Section {
   const peak = Math.max(1, ...stats.weeks);
-  const heights = stats.weeks.map((w) => (w === 0 ? 0 : Math.max(1, Math.round((w / peak) * 6))));
+  const heights = stats.weeks.map((w) => (w === 0 ? 0 : Math.max(1, Math.round(Math.sqrt(w / peak) * 6))));
   const graphCol = screen.cols - 1 - Math.ceil(stats.weeks.length / 2);
   if (graphCol - 2 >= len(s.weeks)) {
     screen.text(1, row + 1, s.weeks, { fg: 'yellow' });
