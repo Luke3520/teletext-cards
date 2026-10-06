@@ -54,12 +54,32 @@ function raw(windows: ContributionWindow[], repos: RepoDetail[] = []): RawData {
 describe('computeStats', () => {
   it('counts work in organisation and teammate repositories, not just owned ones', () => {
     const stats = computeStats(demo);
-    assert.equal(stats.contributedRepos, 10);
-    assert.equal(stats.contributedReposNotOwned, 6);
+    assert.equal(stats.contributedRepos, 11);
+    assert.equal(stats.contributedReposNotOwned, 7);
     assert.deepEqual(
       stats.orgs.map((o) => o.login),
-      ['nordlys-labs', 'kbh-hackers', 'open-fjord'],
+      ['nordlys-labs', 'kbh-hackers', 'open-fjord', 'eksamen-hold'],
     );
+  });
+
+  it('counts team forks, which GitHub leaves out of contributions', () => {
+    const fork: RepoRef = { ...ref('team/app-tests', true), isFork: true, createdAt: '2026-09-10T00:00:00Z' };
+    const stats = computeStats({ ...raw([]), forks: [{ repository: fork, pullRequests: 4 }] });
+    assert.deepEqual(stats.orgs, [{ login: 'team', contributions: 4 }]);
+    assert.equal(stats.contributedReposNotOwned, 1);
+  });
+
+  it('counts each repository once, owned or contributed', () => {
+    const w = window('2026-09-01T00:00:00Z', '2026-10-06T12:00:00Z', [], {
+      commitContributionsByRepository: [
+        { contributions: { totalCount: 2 }, repository: ref('me/solo') },
+        { contributions: { totalCount: 2 }, repository: ref('org/a', true) },
+      ],
+    });
+    const stats = computeStats(raw([w]));
+    assert.equal(stats.ownedRepos, 1);
+    assert.equal(stats.contributedRepos, 2);
+    assert.equal(stats.repos, 2);
   });
 
   it('counts private-only organisations without naming them', () => {
@@ -171,6 +191,12 @@ describe('languageShares', () => {
       ['Go', 'Other'],
     );
     assert.ok(Math.abs(shares.reduce((t, l) => t + l.share, 0) - 1) < 1e-9);
+  });
+
+  it('counts a fork by the commits made after forking', () => {
+    // RepoDetail.commits.authored of a fork only holds post-fork commits.
+    const fork = { ...repo('team/fork', [['Ruby', 1000]], 100, 50), isFork: true };
+    assert.deepEqual(languageShares([fork]), [{ name: 'Ruby', color: null, share: 1 }]);
   });
 
   it('skips empty repositories', () => {

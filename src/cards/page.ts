@@ -55,7 +55,7 @@ export function pageCard(stats: Stats, options: CardOptions): Card {
   row = Math.max(row, art.length ? 1 + size.rows : 0) + 1;
 
   const nums = numbers(screen, row, stats, s);
-  const orgs = organisations(screen, nums.row, stats, s);
+  const orgs = organisations(screen, nums.row, stats, s, 3);
   const langs = languages(screen, orgs.row + 1, stats, s);
   const act = activity(screen, langs.row + 1, stats, s);
   row = act.row;

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { NISSE, resolveArt } from '../src/cards/art.ts';
-import { fit, percentages, wrapList } from '../src/cards/common.ts';
+import { fit, packList, percentages } from '../src/cards/common.ts';
 import { CARDS } from '../src/cards/page.ts';
 import type { RawData } from '../src/github/types.ts';
 import { clock, strings } from '../src/i18n.ts';
@@ -42,7 +42,7 @@ describe('cards', () => {
 
   it('names the organisations and escapes user text', () => {
     const card = CARDS.page(stats, options);
-    assert.match(card.alt, /nordlys-labs, kbh-hackers, open-fjord, \+1 private/);
+    assert.match(card.alt, /nordlys-labs, kbh-hackers, open-fjord, eksamen-hold, \+1 private/);
     assert.match(card.svg, /Developer &lt;&amp;&gt; tester/);
   });
 
@@ -84,8 +84,14 @@ describe('layout helpers', () => {
     assert.equal(fit('Kbh', 6), 'Kbh');
   });
 
-  it('wraps lists and says how many did not fit', () => {
-    const lines = wrapList(['alpha', 'beta', 'gamma', 'delta', 'epsilon'], 14, ' · ', 2, (n) => `+${n}`);
+  it('packs lists into the gaps and says how many did not fit', () => {
+    const orgs = ['DevOpsDynamite', 'microservices-happens', 'exam-project-luke', 'KinoDAT23C', 'shift-left-happens'];
+    assert.deepEqual(packList(orgs, 33, ' · ', 3, (n) => `+${n} more`), [
+      'DevOpsDynamite · KinoDAT23C',
+      'microservices-happens',
+      'exam-project-luke · +1 more',
+    ]);
+    const lines = packList(['alpha', 'beta', 'gamma', 'delta', 'epsilon'], 14, ' · ', 2, (n) => `+${n}`);
     assert.deepEqual(lines, ['alpha · beta', 'gamma · +2']);
     for (const l of lines) assert.ok(l.length <= 14);
   });

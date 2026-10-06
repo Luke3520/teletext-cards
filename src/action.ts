@@ -24,7 +24,7 @@ function summary(stats: Stats, files: string[]): void {
     ['Commits', stats.commits],
     ['Pull requests (merged)', `${stats.pullRequests} (${stats.mergedPullRequests})`],
     ['Code reviews', stats.reviews],
-    ['Repositories with contributions', `${stats.contributedRepos} (${stats.contributedReposNotOwned} owned by orgs or others)`],
+    ['Repositories', `${stats.repos} owned or worked on (${stats.contributedReposNotOwned} owned by orgs or others)`],
     ['Organisations', [...stats.orgs.map((o) => o.login), ...(stats.privateOrgs ? [`+${stats.privateOrgs} private`] : [])].join(', ') || 'none'],
     ['Languages', stats.languages.map((l) => `${l.name} ${(l.share * 100).toFixed(1)}%`).join(', ') || 'none'],
     ['Private contributions (anonymous)', stats.privateContributions],

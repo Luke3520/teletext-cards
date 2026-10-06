@@ -5,7 +5,7 @@ import type { Strings } from '../i18n.ts';
 import type { Stats } from '../stats.ts';
 import type { Colour } from '../teletext/palette.ts';
 import type { Screen } from '../teletext/screen.ts';
-import { RANK_COLOURS, fit, leader, len, num, percentages, wrapList } from './common.ts';
+import { RANK_COLOURS, fit, leader, len, num, packList, percentages } from './common.ts';
 
 export interface Section {
   row: number;
@@ -17,7 +17,7 @@ const LEADER = { label: 'cyan', dots: 'blue', value: 'white', extra: 'yellow' } 
 /** The headline numbers, one per row. */
 export function numbers(screen: Screen, row: number, stats: Stats, s: Strings): Section {
   const end = screen.cols - 1;
-  const repos = Math.max(stats.contributedRepos, stats.ownedRepos);
+  const repos = stats.repos;
   leader(screen, row++, 1, end, s.contributions, num(stats.contributions, s), LEADER);
   leader(screen, row++, 1, end, s.commits, num(stats.commits, s), LEADER);
   leader(screen, row++, 1, end, s.pullRequests, num(stats.pullRequests, s), LEADER, `${num(stats.mergedPullRequests, s)} ${s.merged}`);
@@ -47,7 +47,7 @@ export function organisations(screen: Screen, row: number, stats: Stats, s: Stri
   if (!items.length) return { row, alt: '' };
   const label = s.orgs;
   const start = 2 + len(label);
-  const lines = wrapList(items, screen.cols - 1 - start, ' · ', maxLines, s.more);
+  const lines = packList(items, screen.cols - 1 - start, ' · ', maxLines, s.more);
   screen.text(1, row, label, { fg: 'magenta' });
   lines.forEach((line, i) => {
     let col = start;

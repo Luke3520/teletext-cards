@@ -44,7 +44,7 @@ export async function run(settings: Settings, options: RunOptions = {}): Promise
       `${stats.pullRequests} pull requests (${stats.mergedPullRequests} merged), ${stats.reviews} reviews`,
   );
   log(
-    `${stats.contributedRepos} repositories with contributions, ${stats.contributedReposNotOwned} owned by orgs or others; ` +
+    `${stats.repos} repositories owned or worked on, ${stats.contributedReposNotOwned} of them owned by orgs or others; ` +
       `orgs: ${stats.orgs.map((o) => o.login).join(', ') || 'none'}${stats.privateOrgs ? ` (+${stats.privateOrgs} private)` : ''}`,
   );
   log(`languages by ${stats.languagesBy}: ${stats.languages.map((l) => `${l.name} ${(l.share * 100).toFixed(1)}%`).join(', ') || 'none'}`);

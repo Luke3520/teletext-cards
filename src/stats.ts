@@ -46,7 +46,9 @@ export interface Stats {
   privateContributions: number;
   ownedRepos: number;
   stars: number;
-  /** Repositories with at least one contribution, all time, whoever owns them. */
+  /** Repositories you own or worked on: owned plus contributed, counted once. */
+  repos: number;
+  /** Repositories with at least one contribution, all time, whoever owns them. Includes team forks. */
   contributedRepos: number;
   /** ...of which owned by organisations or other people. */
   contributedReposNotOwned: number;
@@ -121,6 +123,11 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
     add(w.issueContributionsByRepository);
     add(w.pullRequestReviewContributionsByRepository);
   }
+  // Team forks: real work that GitHub's contribution count leaves out.
+  for (const { repository, pullRequests } of raw.forks ?? []) {
+    if (excluded(repository.nameWithOwner) || touched.has(repository.nameWithOwner)) continue;
+    touched.set(repository.nameWithOwner, { ref: repository, contributions: pullRequests });
+  }
 
   const orgs = new Map<string, { contributions: number; public: boolean }>();
   for (const { ref, contributions } of touched.values()) {
@@ -179,6 +186,7 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
     privateContributions: sum((w) => w.restrictedContributionsCount),
     ownedRepos: owned.length,
     stars: owned.reduce((t, r) => t + r.stargazerCount, 0),
+    repos: new Set([...owned.map((r) => r.nameWithOwner.toLowerCase()), ...[...touched.keys()].map((k) => k.toLowerCase())]).size,
     contributedRepos: touched.size,
     contributedReposNotOwned: [...touched.values()].filter((t) => t.ref.owner.login.toLowerCase() !== lower).length,
     orgs: named,
@@ -200,6 +208,9 @@ export function computeStats(raw: RawData, options: StatsOptions = {}): Stats {
  *   third of the commits counts a third. Your own solo repo counts in full.
  * - commits: the user's authored commits, split by each repository's mix.
  * - bytes: raw bytes of every repository, the classic (inflated) method.
+ *
+ * Forks are included with only the commits made after forking (see
+ * RepoDetail.commits), so code written upstream is not counted twice.
  */
 export function languageShares(repos: RepoDetail[], options: StatsOptions = {}): LanguageShare[] {
   const mode = options.languagesBy ?? 'authorship';
@@ -208,7 +219,7 @@ export function languageShares(repos: RepoDetail[], options: StatsOptions = {}):
 
   const totals = new Map<string, { weight: number; color: string | null }>();
   for (const repo of repos) {
-    if (repo.isFork || !repo.commits) continue;
+    if (!repo.commits) continue;
     const { total, authored } = repo.commits;
     if (mode !== 'bytes' && (total === 0 || authored === 0)) continue;
     const size = repo.languages.edges.reduce((t, e) => t + e.size, 0);

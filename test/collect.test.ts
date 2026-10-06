@@ -33,12 +33,15 @@ describe('contributionWindows', () => {
 });
 
 /** A fake client that answers by query name and records what was asked. */
+let reposQuery = '';
+
 function fakeClient(answer: (name: string, variables: Record<string, unknown>, query: string) => unknown) {
   const calls: Array<{ name: string; variables: Record<string, unknown> }> = [];
   const client = {
     async query<T>(query: string, variables: Record<string, unknown> = {}): Promise<GraphQLResponse<T>> {
       const name = /query (\w+)/.exec(query)![1]!;
       calls.push({ name, variables });
+      if (name === 'Repos') reposQuery = query;
       return { data: answer(name, variables, query) as T };
     },
   } as unknown as GitHubClient;
@@ -85,6 +88,17 @@ describe('collect', () => {
         };
       }
       if (name === 'Window') return { user: { contributionsCollection: emptyWindow } };
+      if (name === 'PullRequests') {
+        const team = { nameWithOwner: 'team/tests', isPrivate: false, isFork: true, createdAt: '2026-02-01T00:00:00Z', owner: { __typename: 'Organization', login: 'team' } };
+        return {
+          user: {
+            pullRequests: {
+              pageInfo: { hasNextPage: false, endCursor: null },
+              nodes: [{ repository: team }, { repository: team }, { repository: { ...team, nameWithOwner: 'acme/api', isFork: false } }, { repository: null }],
+            },
+          },
+        };
+      }
       if (name === 'Repos') {
         // Answer every alias; pretend me/two was deleted meanwhile.
         const out: Record<string, unknown> = {};
@@ -94,10 +108,10 @@ describe('collect', () => {
             full === 'me/two'
               ? null
               : {
-                  nameWithOwner: full, isPrivate: false, isFork: false, stargazerCount: 0,
+                  nameWithOwner: full, isPrivate: false, isFork: full === 'team/tests', stargazerCount: 0,
                   owner: { __typename: m[2] === 'me' ? 'User' : 'Organization', login: m[2] },
                   languages: { totalSize: 10, edges: [{ size: 10, node: { name: 'Go', color: null } }] },
-                  defaultBranchRef: { target: { history: { totalCount: 4 }, authored: { totalCount: 2 } } },
+                  defaultBranchRef: { target: { history: { totalCount: 4 }, authored: { totalCount: 2 }, sinceFork: { totalCount: 1 } } },
                 };
         }
         return out;
@@ -109,9 +123,15 @@ describe('collect', () => {
 
     assert.deepEqual(data.ownedRepos.map((r) => r.nameWithOwner), ['me/one', 'me/two']);
     assert.equal(calls.filter((c) => c.name === 'Window').length, 2);
-    assert.deepEqual(data.repos.map((r) => r.nameWithOwner).sort(), ['acme/api', 'me/one']);
+    assert.deepEqual(data.repos.map((r) => r.nameWithOwner).sort(), ['acme/api', 'me/one', 'team/tests']);
     assert.deepEqual(data.repos.find((r) => r.nameWithOwner === 'acme/api')!.commits, { total: 4, authored: 2 });
     assert.equal(calls.find((c) => c.name === 'Repos')!.variables.uid, 'U1');
+    // Forks come from pull requests, and only post-fork commits count as authored.
+    assert.deepEqual(data.forks, [
+      { repository: { nameWithOwner: 'team/tests', isPrivate: false, isFork: true, createdAt: '2026-02-01T00:00:00Z', owner: { __typename: 'Organization', login: 'team' } }, pullRequests: 2 },
+    ]);
+    assert.deepEqual(data.repos.find((r) => r.nameWithOwner === 'team/tests')!.commits, { total: 4, authored: 1 });
+    assert.match(reposQuery, /sinceFork: history\(author: \{ id: \$uid \}, since: "2026-02-01T00:00:00Z"\)/);
   });
 
   it('explains a missing user', async () => {

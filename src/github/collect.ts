@@ -7,7 +7,7 @@
 // walk back one year at a time to the day the account was created.
 
 import type { GitHubClient } from './client.ts';
-import type { ContributionWindow, OwnedRepo, RawData, RepoDetail, RepoRef } from './types.ts';
+import type { ContributionWindow, ForkWork, OwnedRepo, RawData, RepoDetail, RepoRef } from './types.ts';
 
 const DAY = 86_400_000;
 
@@ -31,6 +31,18 @@ const OWNED = `query Owned($login: String!, $after: String) {
     }
   }
 }`;
+
+const PULL_REQUESTS = `query PullRequests($login: String!, $after: String) {
+  user(login: $login) {
+    pullRequests(first: 100, after: $after, orderBy: { field: CREATED_AT, direction: DESC }) {
+      pageInfo { hasNextPage endCursor }
+      nodes { repository { nameWithOwner isPrivate isFork createdAt owner { __typename login } } }
+    }
+  }
+}`;
+
+/** Enough for a thousand pull requests; older ones rarely add a new fork. */
+const MAX_PR_PAGES = 10;
 
 const BY_REPO = `(maxRepositories: 100) { contributions { totalCount } repository { ...Ref } }`;
 
@@ -76,8 +88,19 @@ interface WindowData {
   user: { contributionsCollection: Omit<ContributionWindow, 'from' | 'to'> };
 }
 
+interface PullRequestsData {
+  user: {
+    pullRequests: {
+      pageInfo: { hasNextPage: boolean; endCursor: string | null };
+      nodes: Array<{ repository: RepoRef | null } | null>;
+    };
+  };
+}
+
 type DetailNode = Omit<RepoDetail, 'commits'> & {
-  defaultBranchRef: { target: { history?: { totalCount: number }; authored?: { totalCount: number } } | null } | null;
+  defaultBranchRef: {
+    target: { history?: { totalCount: number }; authored?: { totalCount: number }; sinceFork?: { totalCount: number } } | null;
+  } | null;
 };
 
 /**
@@ -129,8 +152,11 @@ export async function collect(client: GitHubClient, options: CollectOptions): Pr
   }
   log(`${windows.length} yearly contribution windows since ${user.createdAt.slice(0, 10)}`);
 
-  // Every repository the user touched or owns, forks excluded: a fork's
-  // languages belong to its upstream.
+  const forks = await findForkWork(client, user.login);
+  if (forks.length) log(`${forks.length} forks with your pull requests, which GitHub does not count as contributions`);
+
+  // Every repository the user touched or owns. Forks only come in through
+  // pull requests (above): GitHub leaves them out of contributions.
   const refs = new Map<string, RepoRef>();
   for (const w of windows) {
     for (const list of [
@@ -147,8 +173,9 @@ export async function collect(client: GitHubClient, options: CollectOptions): Pr
       refs.set(repo.nameWithOwner, { nameWithOwner: repo.nameWithOwner, isPrivate: repo.isPrivate, isFork: false, owner: { __typename: 'User', login: user.login } });
     }
   }
+  for (const { repository } of forks) refs.set(repository.nameWithOwner, repository);
 
-  const repos = await fetchDetails(client, user.id, [...refs.keys()]);
+  const repos = await fetchDetails(client, user.id, [...refs.values()]);
   log(`${repos.length} repositories with contributions or owned, ${repos.filter((r) => r.owner.login !== user.login).length} of them owned by others`);
 
   return {
@@ -165,18 +192,44 @@ export async function collect(client: GitHubClient, options: CollectOptions): Pr
     },
     ownedRepos,
     windows,
+    forks,
     repos,
   };
 }
 
-async function fetchDetails(client: GitHubClient, userId: string, names: string[]): Promise<RepoDetail[]> {
+/** Forks the user opened pull requests in, with how many. */
+async function findForkWork(client: GitHubClient, login: string): Promise<ForkWork[]> {
+  const found = new Map<string, ForkWork>();
+  let after: string | null = null;
+  for (let page = 0; page < MAX_PR_PAGES; page++) {
+    const res: { data: PullRequestsData | null } = await client.query<PullRequestsData>(PULL_REQUESTS, { login, after });
+    const prs = res.data!.user.pullRequests;
+    for (const node of prs.nodes) {
+      const repo = node?.repository;
+      if (!repo?.isFork) continue;
+      const seen = found.get(repo.nameWithOwner);
+      if (seen) seen.pullRequests++;
+      else found.set(repo.nameWithOwner, { repository: repo, pullRequests: 1 });
+    }
+    if (!prs.pageInfo.hasNextPage) break;
+    after = prs.pageInfo.endCursor;
+  }
+  return [...found.values()];
+}
+
+async function fetchDetails(client: GitHubClient, userId: string, refs: RepoRef[]): Promise<RepoDetail[]> {
   const out: RepoDetail[] = [];
-  for (let i = 0; i < names.length; i += 20) {
-    const batch = names.slice(i, i + 20);
+  for (let i = 0; i < refs.length; i += 20) {
+    const batch = refs.slice(i, i + 20);
     const fields = batch
-      .map((name, k) => {
-        const [owner, repo] = name.split('/');
-        return `r${k}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(repo)}) { ...Detail }`;
+      .map((ref, k) => {
+        const [owner, repo] = ref.nameWithOwner.split('/');
+        // In a fork, only commits since the fork are new work.
+        const sinceFork =
+          ref.isFork && ref.createdAt
+            ? ` defaultBranchRef { target { ... on Commit { sinceFork: history(author: { id: $uid }, since: ${JSON.stringify(ref.createdAt)}) { totalCount } } } }`
+            : '';
+        return `r${k}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(repo)}) { ...Detail${sinceFork} }`;
       })
       .join('\n');
     const res = await client.query<Record<string, DetailNode | null>>(`query Repos($uid: ID!) {\n${fields}\n}\n${DETAIL}`, { uid: userId });
@@ -185,9 +238,11 @@ async function fetchDetails(client: GitHubClient, userId: string, names: string[
       if (!node) return; // deleted, renamed or no longer visible to this token
       const { defaultBranchRef, ...rest } = node;
       const target = defaultBranchRef?.target;
+      const authored = (rest.isFork ? target?.sinceFork : target?.authored)?.totalCount ?? 0;
       out.push({
         ...rest,
-        commits: target?.history ? { total: target.history.totalCount, authored: target.authored?.totalCount ?? 0 } : null,
+        createdAt: batch[k]!.createdAt,
+        commits: target?.history ? { total: target.history.totalCount, authored } : null,
       });
     });
   }

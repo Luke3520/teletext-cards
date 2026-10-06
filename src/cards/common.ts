@@ -76,33 +76,31 @@ export function leader(
   }
 }
 
-/** Wraps a list into lines no wider than `width`, joined by `sep`. */
-export function wrapList(items: string[], width: number, sep: string, maxLines: number, more: (n: number) => string): string[] {
-  const lines: string[] = [];
-  let line = '';
-  for (let i = 0; i < items.length; i++) {
-    const item = fit(items[i]!, width);
-    const candidate = line ? `${line}${sep}${item}` : item;
-    if (len(candidate) <= width) {
-      line = candidate;
-      continue;
-    }
-    if (lines.length + 1 >= maxLines) {
-      // Last line: make room for "+N more".
-      const rest = items.length - i;
-      let tail = `${line}${sep}${more(rest)}`;
-      while (len(tail) > width && line.includes(sep)) {
-        line = line.slice(0, line.lastIndexOf(sep));
-        tail = `${line}${sep}${more(rest + 1)}`;
-      }
-      lines.push(len(tail) <= width ? tail : line);
-      return lines;
-    }
-    lines.push(line);
-    line = item;
+/**
+ * Packs a list into at most `maxLines` lines no wider than `width`, joined by
+ * `sep`. Each item goes on the first line with room for it, so short names
+ * fill the gaps that long ones leave. What does not fit becomes "+N more".
+ */
+export function packList(items: string[], width: number, sep: string, maxLines: number, more: (n: number) => string): string[] {
+  const span = (parts: string[]) => parts.reduce((t, p, i) => t + len(p) + (i ? len(sep) : 0), 0);
+  const lines: string[][] = [];
+  let hidden = 0;
+  for (const raw of items) {
+    const item = fit(raw, width);
+    const line = lines.find((l) => span([...l, item]) <= width);
+    if (line) line.push(item);
+    else if (lines.length < maxLines) lines.push([item]);
+    else hidden++;
   }
-  if (line) lines.push(line);
-  return lines;
+  if (hidden) {
+    const last = lines[lines.length - 1]!;
+    while (last.length > 1 && span([...last, more(hidden)]) > width) {
+      last.pop();
+      hidden++;
+    }
+    if (span([...last, more(hidden)]) <= width) last.push(more(hidden));
+  }
+  return lines.map((l) => l.join(sep));
 }
 
 /** Whole percentages that add up to 100 (largest remainder). */
