@@ -222,8 +222,8 @@ export function renderSVG(screen: Screen, options: RenderOptions): string {
       `.tt-in{animation-name:tt-hide;animation-timing-function:steps(1)}` +
         `.tt-frame{visibility:hidden;animation-name:tt-show;animation-timing-function:steps(1)}` +
         `@keyframes tt-hide{from,to{visibility:hidden}}@keyframes tt-show{from,to{visibility:visible}}`,
-    `.tt-fl{animation:tt-flash 1s steps(1) infinite}@keyframes tt-flash{75%{opacity:0}}`,
-    `@media (prefers-reduced-motion:reduce){.tt-a,.tt-fl{animation:none!important}}`,
+    animate && `.tt-fl{animation:tt-flash 1s steps(1) infinite}@keyframes tt-flash{75%{opacity:0}}`,
+    animate && `@media (prefers-reduced-motion:reduce){.tt-a,.tt-fl{animation:none!important}}`,
   ]
     .filter(Boolean)
     .join('');
@@ -256,7 +256,7 @@ export function renderSVG(screen: Screen, options: RenderOptions): string {
     `role="img" aria-labelledby="${p}-title ${p}-desc">` +
     `<title id="${p}-title">${esc(options.title)}</title>` +
     `<desc id="${p}-desc">${esc(options.description)}</desc>` +
-    `<style>${css}</style>` +
+    (css ? `<style>${css}</style>` : '') +
     `<defs>${glyphs.defs()}${clip}${effects}</defs>` +
     `<g clip-path="url(#${p}-clip)">` +
     `<rect width="${width}" height="${height}" fill="#000"/>` +

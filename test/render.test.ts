@@ -49,7 +49,7 @@ describe('cards', () => {
   it('respects reduced motion and can be static', () => {
     assert.match(CARDS.page(stats, options).svg, /prefers-reduced-motion:reduce/);
     const still = CARDS.page(stats, { ...options, animate: false, crt: false });
-    assert.doesNotMatch(still.svg, /tt-in|tt-frame|filter=/);
+    assert.doesNotMatch(still.svg, /tt-in|tt-frame|filter=|@keyframes/);
   });
 });
 
