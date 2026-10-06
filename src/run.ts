@@ -62,11 +62,22 @@ export async function run(settings: Settings, options: RunOptions = {}): Promise
     `${stats.contributions} contributions (${stats.lastYear} in the last year), ${stats.commits} commits, ` +
       `${stats.pullRequests} pull requests (${stats.mergedPullRequests} merged), ${stats.reviews} reviews`,
   );
+  if (raw.access) {
+    const a = raw.access;
+    log(
+      `token can see: ${a.ownedPrivateRepos} private repositories you own, ${a.organizations} of your organisations, ` +
+        `${a.orgPrivateRepos} private repositories in ${a.orgsWithPrivateRepos} of them`,
+    );
+  }
   if (stats.privateContributions) {
     log(
       `${stats.privateContributions} contributions are in private repositories this token cannot see: ` +
         'they count in the totals, but not in repositories, organisations or languages',
     );
+    const perYear = raw.windows
+      .filter((w) => w.restrictedContributionsCount > 0)
+      .map((w) => `${w.from.slice(0, 10)} to ${w.to.slice(0, 10)}: ${w.restrictedContributionsCount}`);
+    log(`hidden private contributions by year: ${perYear.join(', ')}`);
   }
   log(
     `${stats.repos} repositories owned or worked on, ${stats.contributedReposNotOwned} of them owned by orgs or others; ` +

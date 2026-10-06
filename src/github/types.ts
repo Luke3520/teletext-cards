@@ -78,5 +78,16 @@ export interface RawData {
   windows: ContributionWindow[];
   /** Missing in data saved by older versions. */
   forks?: ForkWork[];
+  /** What the token can see, for diagnosing missing private work. Counts only. */
+  access?: TokenAccess;
   repos: RepoDetail[];
+}
+
+export interface TokenAccess {
+  ownedPrivateRepos: number;
+  /** Organisations of the user that the token can see. */
+  organizations: number;
+  /** Private repositories the token can see across those organisations. */
+  orgPrivateRepos: number;
+  orgsWithPrivateRepos: number;
 }

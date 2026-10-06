@@ -7,7 +7,7 @@
 // walk back one year at a time to the day the account was created.
 
 import type { GitHubClient } from './client.ts';
-import type { ContributionWindow, ForkWork, OwnedRepo, RawData, RepoDetail, RepoRef } from './types.ts';
+import type { ContributionWindow, ForkWork, OwnedRepo, RawData, RepoDetail, RepoRef, TokenAccess } from './types.ts';
 
 const DAY = 86_400_000;
 
@@ -31,6 +31,20 @@ const OWNED = `query Owned($login: String!, $after: String) {
     }
   }
 }`;
+
+const ACCESS = `query Access($login: String!) {
+  user(login: $login) {
+    repositories(ownerAffiliations: OWNER, privacy: PRIVATE) { totalCount }
+    organizations(first: 100) { totalCount nodes { repositories(privacy: PRIVATE) { totalCount } } }
+  }
+}`;
+
+interface AccessData {
+  user: {
+    repositories: { totalCount: number };
+    organizations: { totalCount: number; nodes: Array<{ repositories: { totalCount: number } } | null> };
+  };
+}
 
 const PULL_REQUESTS = `query PullRequests($login: String!, $after: String) {
   user(login: $login) {
@@ -135,6 +149,8 @@ export async function collect(client: GitHubClient, options: CollectOptions): Pr
   const user = profile.data?.user;
   if (!user) throw new Error(`GitHub user "${options.login}" was not found. Organisations are not supported.`);
 
+  const access = await checkAccess(client, user.login);
+
   const ownedRepos: OwnedRepo[] = [];
   for (let after: string | null = null; ; ) {
     const page: { data: OwnedData | null } = await client.query<OwnedData>(OWNED, { login: user.login, after });
@@ -193,8 +209,27 @@ export async function collect(client: GitHubClient, options: CollectOptions): Pr
     ownedRepos,
     windows,
     forks,
+    access,
     repos,
   };
+}
+
+/** Counts what the token can see. Only for the log; never fails the run. */
+async function checkAccess(client: GitHubClient, login: string): Promise<TokenAccess | undefined> {
+  try {
+    const res = await client.query<AccessData>(ACCESS, { login });
+    const u = res.data?.user;
+    if (!u) return undefined;
+    const orgs = u.organizations.nodes.filter((o): o is NonNullable<typeof o> => o !== null);
+    return {
+      ownedPrivateRepos: u.repositories.totalCount,
+      organizations: u.organizations.totalCount,
+      orgPrivateRepos: orgs.reduce((t, o) => t + o.repositories.totalCount, 0),
+      orgsWithPrivateRepos: orgs.filter((o) => o.repositories.totalCount > 0).length,
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 /** Forks the user opened pull requests in, with how many. */

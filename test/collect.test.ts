@@ -88,6 +88,14 @@ describe('collect', () => {
         };
       }
       if (name === 'Window') return { user: { contributionsCollection: emptyWindow } };
+      if (name === 'Access') {
+        return {
+          user: {
+            repositories: { totalCount: 2 },
+            organizations: { totalCount: 3, nodes: [{ repositories: { totalCount: 1 } }, { repositories: { totalCount: 0 } }, null] },
+          },
+        };
+      }
       if (name === 'PullRequests') {
         const team = { nameWithOwner: 'team/tests', isPrivate: false, isFork: true, createdAt: '2026-02-01T00:00:00Z', owner: { __typename: 'Organization', login: 'team' } };
         return {
@@ -125,6 +133,7 @@ describe('collect', () => {
     assert.equal(calls.filter((c) => c.name === 'Window').length, 2);
     assert.deepEqual(data.repos.map((r) => r.nameWithOwner).sort(), ['acme/api', 'me/one', 'team/tests']);
     assert.deepEqual(data.repos.find((r) => r.nameWithOwner === 'acme/api')!.commits, { total: 4, authored: 2 });
+    assert.deepEqual(data.access, { ownedPrivateRepos: 2, organizations: 3, orgPrivateRepos: 1, orgsWithPrivateRepos: 1 });
     assert.equal(calls.find((c) => c.name === 'Repos')!.variables.uid, 'U1');
     // Forks come from pull requests, and only post-fork commits count as authored.
     assert.deepEqual(data.forks, [
@@ -132,6 +141,26 @@ describe('collect', () => {
     ]);
     assert.deepEqual(data.repos.find((r) => r.nameWithOwner === 'team/tests')!.commits, { total: 4, authored: 1 });
     assert.match(reposQuery, /sinceFork: history\(author: \{ id: \$uid \}, since: "2026-02-01T00:00:00Z"\)/);
+  });
+
+  it('carries on when the access check fails', async () => {
+    const { client } = fakeClient((name) => {
+      if (name === 'Profile') {
+        return {
+          user: {
+            id: 'U1', login: 'me', name: null, createdAt: '2026-10-01T00:00:00Z',
+            followers: { totalCount: 0 }, pullRequests: { totalCount: 0 }, merged: { totalCount: 0 }, issues: { totalCount: 0 },
+          },
+        };
+      }
+      if (name === 'Access') throw new Error('Resource not accessible by integration');
+      if (name === 'Owned') return { user: { repositories: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } };
+      if (name === 'Window') return { user: { contributionsCollection: { ...emptyWindow, commitContributionsByRepository: [] } } };
+      if (name === 'PullRequests') return { user: { pullRequests: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } };
+      return {};
+    });
+    const data = await collect(client, { login: 'me', now: new Date('2026-10-06T00:00:00Z') });
+    assert.equal(data.access, undefined);
   });
 
   it('explains a missing user', async () => {
