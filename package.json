@@ -1,0 +1,23 @@
+{
+  "name": "teletext-cards",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tekst-TV style SVG cards for your GitHub profile that count your org and team work.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc",
+    "examples": "node src/cli.ts --fixture test/fixtures/demo.json --out examples --art nisse --accent red --timezone Europe/Copenhagen --subtitle 'Developer in Copenhagen|Backend, integrations & ops' --fastext 'Projects,Setup,Stack,Contact'",
+    "glyphs": "node scripts/build-glyphs.ts",
+    "check": "tsc && node --test \"test/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "opentype.js": "^2.0.0",
+    "typescript": "^7.0.2"
+  }
+}

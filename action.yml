@@ -1,0 +1,84 @@
+name: Teletext Cards
+description: Tekst-TV style SVG cards for your GitHub profile that count your org and team work, not just the repos you own.
+author: Luke3520
+branding:
+  icon: tv
+  color: blue
+
+inputs:
+  github_token:
+    description: Token for the GitHub API. The default sees public work, including public org repos. Use a classic PAT with repo and read:org to also count private repositories (they are counted, never named).
+    default: ${{ github.token }}
+  username:
+    description: GitHub login to draw cards for.
+    default: ${{ github.repository_owner }}
+  cards:
+    description: Which cards to draw, comma separated. page, stats, languages.
+    default: page,stats,languages
+  output_dir:
+    description: Folder to write the SVG files to.
+    default: teletext-cards
+  publish_branch:
+    description: If set, force-push the cards as a single commit to this branch (for example output). Needs contents write permission.
+    default: ''
+  publish_token:
+    description: Token used to push to publish_branch. Defaults to github_token; set it to github.token if github_token is a PAT without push rights.
+    default: ''
+  commit_message:
+    description: Commit message for publish_branch.
+    default: Update teletext cards
+  title:
+    description: Big double-height line on the page card. Defaults to your name.
+    default: ''
+  subtitle:
+    description: Up to two lines under the title, separated by a newline or |.
+    default: ''
+  brand:
+    description: Service name in the header row. Defaults to your login.
+    default: ''
+  page_number:
+    description: Teletext page number in the header, 100-899.
+    default: '100'
+  accent:
+    description: Colour of the title band. red, green, yellow, blue, magenta, cyan or white.
+    default: blue
+  art:
+    description: Mosaic pixel art next to the title. nisse, none, or your own rows of colour codes (K R G Y B M C W, . for empty) separated by | or newlines.
+    default: none
+  fastext:
+    description: Up to four labels for the red, green, yellow and cyan Fastext keys at the bottom of the page, comma separated.
+    default: ''
+  locale:
+    description: Language of the labels and dates. en or da.
+    default: en
+  timezone:
+    description: IANA time zone for the header clock, for example Europe/Copenhagen.
+    default: UTC
+  languages_by:
+    description: authorship (bytes scaled by your share of each repo's commits), commits (your commits split by language), or bytes (classic, whole repos).
+    default: authorship
+  languages_count:
+    description: Languages listed before the rest are grouped as Other.
+    default: '5'
+  exclude_repos:
+    description: Repositories to leave out, comma separated. owner/name or owner/*.
+    default: ''
+  exclude_languages:
+    description: Languages to leave out, comma separated.
+    default: ''
+  animate:
+    description: Page-arrival animation and a blinking clock. Skipped for viewers who prefer reduced motion.
+    default: 'true'
+  crt:
+    description: Phosphor glow, scanlines and vignette.
+    default: 'true'
+
+outputs:
+  files:
+    description: Comma-separated paths of the SVG files written.
+  contributions:
+    description: All-time contribution count.
+
+runs:
+  using: node24
+  main: src/action.ts

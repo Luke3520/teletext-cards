@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Examples match the code
+        run: |
+          npm run examples
+          git diff --exit-code -- examples
+
+  action:
+    # Runs the action the way people use it: GitHub's own Node 24, the real API,
+    # the default token. Proves the no-build TypeScript entry point works.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./
+        with:
+          output_dir: out
+          art: nisse
+          timezone: Europe/Copenhagen
+      - run: |
+          ls -la out
+          test -s out/page.svg && test -s out/stats.svg && test -s out/languages.svg
