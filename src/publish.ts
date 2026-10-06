@@ -2,7 +2,7 @@
 // current repository, so the default branch's history stays clean.
 
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -15,6 +15,24 @@ export interface PublishOptions {
   message: string;
   serverUrl?: string;
   log?: (message: string) => void;
+}
+
+/**
+ * Branches the cards must never be force-pushed to: the one the workflow
+ * runs on and the repository's default branch. A push there would replace
+ * the README, and everything else, with a commit of SVG files.
+ */
+export function protectedBranches(env: Record<string, string | undefined> = process.env): string[] {
+  const names = new Set(['main', 'master']);
+  if (env.GITHUB_REF_TYPE !== 'tag' && env.GITHUB_REF_NAME) names.add(env.GITHUB_REF_NAME);
+  try {
+    const event = env.GITHUB_EVENT_PATH ? (JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, 'utf8')) as { repository?: { default_branch?: unknown } }) : null;
+    const branch = event?.repository?.default_branch;
+    if (typeof branch === 'string' && branch) names.add(branch);
+  } catch {
+    // No readable event: the names above still stand.
+  }
+  return [...names];
 }
 
 const BOT_NAME = 'github-actions[bot]';

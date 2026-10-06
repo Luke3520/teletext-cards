@@ -2,7 +2,7 @@
 // types itself, so there is no build step and nothing in node_modules.
 
 import { appendFileSync } from 'node:fs';
-import { publish } from './publish.ts';
+import { protectedBranches, publish } from './publish.ts';
 import { originText, run, sourcesText } from './run.ts';
 import { parseSettings } from './settings.ts';
 import type { Stats } from './stats.ts';
@@ -24,6 +24,10 @@ function summary(stats: Stats, files: string[]): void {
     ['Commits', stats.commits],
     ['Pull requests (merged)', `${stats.pullRequests} (${stats.mergedPullRequests})`],
     ['Code reviews', stats.reviews],
+    ['Last 7 days', `${stats.last7Days}${stats.usualWeek === null ? '' : ` (an ordinary week: ${Math.round(stats.usualWeek)})`}`],
+    ['Streak', `${stats.currentStreak} days (best ${stats.longestStreak})`],
+    ['Stars', stats.stars],
+    ...(stats.visitors ? [['Repo visitors, 14 days', `${stats.visitors.uniques} (${stats.visitors.views} views)`] as [string, string]] : []),
     ['Repositories', `${stats.repos} owned or worked on (${stats.contributedReposNotOwned} owned by orgs or others)`],
     ['Organisations', [...stats.orgs.map((o) => o.label ?? o.login), ...(stats.privateOrgs ? [`+${stats.privateOrgs} private`] : [])].join(', ') || 'none'],
     ['Languages', stats.languages.map((l) => `${l.name} ${(l.share * 100).toFixed(1)}%`).join(', ') || 'none'],
@@ -46,6 +50,12 @@ function summary(stats: Stats, files: string[]): void {
 
 async function main(): Promise<void> {
   const settings = parseSettings(input, { username: process.env.GITHUB_REPOSITORY_OWNER });
+  if (settings.publishBranch && protectedBranches().includes(settings.publishBranch)) {
+    throw new Error(
+      `publish_branch is "${settings.publishBranch}", where your workflow or README lives. The cards are force-pushed ` +
+        'as a single commit, which would replace everything on it. Give them a branch of their own, such as output.',
+    );
+  }
   const log = (message: string) => console.log(message);
   const { stats, files } = await run(settings, { log });
 

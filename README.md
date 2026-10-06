@@ -1,124 +1,121 @@
 # teletext-cards
 
-GitHub profile cards in the style of 1980s teletext (Ceefax, DR Tekst-TV),
-built from **all** your work: the repositories you own, plus the organisation
-and team repositories that the usual stats cards leave out.
+Your GitHub stats, broadcast like it's 1985. A GitHub Action that draws your
+profile as a page of Danish Tekst-TV, and counts **all** your work, including
+the organisation and team repositories that other stats cards forget.
 
-![A teletext page with a demo user's GitHub stats](examples/page.svg)
+![A teletext page with a made-up developer's GitHub stats](examples/page.svg)
 
-<sub>Demo data for a made-up user. Your page fills in from your own GitHub activity.</sub>
+<sub>Kim Kode is made up. Your page fills in from your own GitHub activity and redraws itself every morning.</sub>
 
 ## Why another stats card?
 
-Most README stats cards start from the repositories you **own**. That leaves
-out a lot:
+Most stats cards only count the repositories you own. If your best work lives
+in an organisation (school projects, your job, open source), they think you
+have been on holiday. teletext-cards follows your contributions instead,
+wherever they happened:
 
-- **Organisation and team work is missing.** Study projects, company repos and
-  open source contributions usually live under an organisation or a teammate's
-  account, so they never show up in your repo count, stars or languages.
-- **Team forks are invisible.** GitHub never counts commits or pull requests
-  in a fork as contributions, and many team projects start as a fork of a
-  course or starter repo.
-- **Languages are measured in bytes of repos you own, whoever wrote them.**
-  A team repo under your name counts in full; the code you wrote somewhere
-  else counts as nothing.
-- **Shared public servers hit rate limits.** Hosted instances serve thousands
-  of profiles from a few tokens, so cards can fail to render when it matters.
-
-teletext-cards works differently:
-
-1. **It starts from your contributions.** GitHub records every commit, pull
-   request, issue and review in a yearly *contributions collection*, whoever
-   owns the repository. The action walks those back, one year at a time, to the
-   day you joined, then adds the forks you opened pull requests in.
-2. **Languages follow your commits.** Each repository's language mix is
-   scaled by the share of its commits that you authored. Write a quarter of a
-   team's Go service and a quarter of its Go counts. Never commit to a repo and
-   it does not count, however big it is.
-3. **It runs in your own GitHub Actions.** No server, no shared rate limit,
-   nothing to go down. The cards are static SVGs, rebuilt on a schedule.
-4. **Private work stays private.** With a token that can see private
-   repositories, they count towards your numbers, but their names never appear.
-   An organisation that is only known through private repositories is shown as
-   `+1 private`.
+- **Org and team work counts.** Commits, pull requests and reviews in other people's repositories, plus the team forks that GitHub itself leaves out.
+- **Languages follow your commits.** A team repository counts by your share of its commits, not by its size.
+- **Private work counts too,** without names, if you give it a [token](#tokens).
+- **It runs in your own Actions.** No server, no shared rate limit, nothing to go down.
 
 ## Quick start
 
-Add `.github/workflows/teletext-cards.yml` to your profile repository (the one
-named after your username):
+1. Add this workflow to your profile repository (the one named after you), as
+   `.github/workflows/teletext-cards.yml`:
 
-```yaml
-name: Teletext cards
+   ```yaml
+   name: Teletext cards
 
-on:
-  schedule:
-    - cron: "17 4 * * *" # every morning
-  workflow_dispatch:
-  push:
-    paths: [.github/workflows/teletext-cards.yml]
+   on:
+     schedule:
+       - cron: "17 4 * * *" # every morning
+     workflow_dispatch:
+     push:
+       paths: [.github/workflows/teletext-cards.yml] # redraw when you change the settings
 
-permissions:
-  contents: write # to push the cards to the output branch
+   permissions:
+     contents: write # to push the cards to their own branch
 
-jobs:
-  cards:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Luke3520/teletext-cards@v1
-        with:
-          publish_branch: output
-          subtitle: Developer in Copenhagen|Backend, integrations & ops
-          timezone: Europe/Copenhagen
-          art: nisse
-```
+   jobs:
+     cards:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: Luke3520/teletext-cards@v1
+           with:
+             publish_branch: output
+             subtitle: Developer in Copenhagen|Runs on coffee and hygge
+             timezone: Europe/Copenhagen
+             art: pipe-nisse
+   ```
 
-Run it once from the **Actions** tab, then put the page in your `README.md`:
+2. Run it once from the **Actions** tab. After that it redraws itself every
+   morning, before anyone has had their coffee.
 
-```html
-<img src="https://raw.githubusercontent.com/YOUR_LOGIN/YOUR_LOGIN/output/page.svg"
-     alt="My GitHub stats as a teletext page" width="100%">
-```
+3. Put the page at the top of your `README.md`:
 
-`stats.svg` (the numbers, with a 52-week graph) and `languages.svg` are there
-too, if you would rather build your own layout:
+   ```html
+   <img src="https://raw.githubusercontent.com/YOUR_LOGIN/YOUR_LOGIN/output/page.svg"
+        alt="My GitHub stats as a teletext page" width="100%">
+   ```
+
+Rather build your own layout? `stats.svg` and `languages.svg` land on the same
+branch:
 
 ![Stats card](examples/stats.svg)
 ![Languages card](examples/languages.svg)
 
-## Inputs
+## Make it yours
+
+| Input | What it does |
+|---|---|
+| `subtitle` | Up to two lines under your name, split by `\|`. |
+| `art` | Pixel art next to your name: `nisse`, `pipe-nisse` (smokes a pipe, wiggles his eyebrows), `none`, or [your own](#draw-your-own). |
+| `accent` | Colour of the title band: `red`, `green`, `yellow`, `blue`, `magenta`, `cyan` or `white`. |
+| `timezone` | For the clock and the dates, such as `Europe/Copenhagen`. |
+| `locale` | `en`, or `da` for Danish. Hej! |
+| `orgs` | Pick your organisations: `name` puts one first, `name=Label` renames it, `-name` hides it. |
+| `hide` | Parts to switch off, comma separated: `since`, `stars`, `visitors`, `contributions`, `last_7_days`, `streak`, `commits`, `pull_requests`, `reviews`, `repositories`, `orgs`, `languages`, `recent`, `activity`. |
+
+<details>
+<summary>All the inputs</summary>
 
 | Input | Default | What it does |
 |---|---|---|
-| `github_token` | `${{ github.token }}` | API token. The default sees all public work, including public organisation repos. See [private work](#counting-private-work) and [repo visitors](#repo-visitors). |
+| `github_token` | `${{ github.token }}` | API token. See [tokens](#tokens). |
 | `username` | repository owner | Whose cards to draw. |
 | `cards` | `page,stats,languages` | Which cards to draw. |
 | `output_dir` | `teletext-cards` | Where to write the SVGs. |
-| `publish_branch` | | Force-push the cards as a single commit to this branch, keeping your main history clean. Needs `contents: write`. |
-| `publish_token` | `github_token` | Token for that push, if `github_token` is a PAT without push rights. |
+| `publish_branch` | | Push the cards to this branch as a single commit, replaced on every run. Must be a branch of their own, such as `output`. Needs `contents: write`. |
+| `publish_token` | `github_token` | Token for that push, if `github_token` cannot push. |
+| `commit_message` | `Update teletext cards` | Message for that commit. |
 | `title` | your name | The big double-height line. |
 | `subtitle` | | Up to two lines under the title, split by `\|` or a newline. |
-| `brand` | your login | Service name in the header row. |
+| `brand` | your login | Service name in the header. |
 | `page_number` | `100` | Teletext page number, 100 to 899. |
-| `accent` | `blue` | Colour of the title band: `red`, `green`, `yellow`, `blue`, `magenta`, `cyan` or `white`. |
-| `art` | `none` | Mosaic pixel art next to the title. `nisse`, `pipe-nisse` (animated: smokes a pipe and wiggles his eyebrows), or your own (see below). |
-| `fastext` | | Up to four labels for the red, green, yellow and cyan keys at the bottom. |
-| `locale` | `en` | `en` or `da` (Danish). |
-| `timezone` | `UTC` | Time zone for the header clock, such as `Europe/Copenhagen`. |
-| `languages_by` | `authorship` | `authorship`, `commits` or `bytes` (the classic method). |
+| `accent` | `blue` | Colour of the title band. |
+| `art` | `none` | Pixel art next to the title. |
+| `fastext` | | Up to four labels for the coloured keys at the bottom. |
+| `locale` | `en` | `en` or `da`. |
+| `timezone` | `UTC` | Time zone for the clock and the dates. |
+| `languages_by` | `authorship` | `authorship` (scaled by your share of each repo's commits), `commits`, or `bytes` (the classic way). |
 | `languages_count` | `5` | Languages listed before the rest become *Other*. |
-| `orgs` | | Choose the ORGS line, comma separated. `name` shows that organisation first (even a private one), `name=Label` renames it too, `-name` hides it. The rest follow, busiest first. |
-| `hide` | | Parts to leave out, comma separated: `since`, `stars`, `visitors`, `contributions`, `last_7_days`, `streak`, `commits`, `pull_requests`, `reviews`, `repositories`, `orgs`, `languages`, `recent` (recent work, on the page), `activity` (the 52-week graph, on the stats card). Everything shows unless you hide it. |
+| `orgs` | | Choose and rename the organisations on the ORGS line. |
+| `hide` | | Parts to switch off. |
 | `exclude_repos` | | `owner/name` or `owner/*`, comma separated. |
 | `exclude_languages` | | Language names, comma separated. |
-| `animate` | `true` | The page arrives row by row and the clock blinks. Off for anyone who prefers reduced motion. |
+| `animate` | `true` | The page arrives row by row, the clock blinks, and the line under your name takes turns. |
 | `crt` | `true` | Phosphor glow, scanlines and a soft vignette. |
 
-### Your own pixel art
+</details>
 
-`art` takes rows of colour codes: `K` black, `R` red, `G` green, `Y` yellow,
-`B` blue, `M` magenta, `C` cyan, `W` white, `.` for empty. Teletext had no
-brown, but pixel art may use `N` for it. Each character is one
-teletext mosaic pixel, so two across and three down make one character cell.
+### Draw your own
+
+`art` takes rows of colour codes, one character per mosaic pixel (two across
+and three down make one character cell): `K` black, `R` red, `G` green,
+`Y` yellow, `B` blue, `M` magenta, `C` cyan, `W` white, `N` brown and `.` for
+empty. Teletext never had brown, but a nisse needs a pipe.
 
 ```yaml
 art: |
@@ -130,33 +127,16 @@ art: |
   ..YY..
 ```
 
-## How the numbers are counted
+## Tokens
 
-| On the card | Where it comes from |
+| Token | What you get |
 |---|---|
-| The line under the title | Takes turns, a few seconds each, like teletext subpages: since when you are on GitHub, your stars, and your repo visitors. A still picture, or a viewer who prefers less motion, gets the first. |
-| Stars | Stars on the repositories you own. Left out until you have one. |
-| Repo visitors | Unique visitors of your public repositories over the last 14 days, from GitHub's own traffic numbers. See [repo visitors](#repo-visitors). |
-| Contributions | Every day in your contribution calendars since you joined, so it matches your profile graph. Includes anonymous private contributions if you show them on your profile. |
-| Last 7 days | Your contributions today and in the 6 days before. Until you have done something today, the 7 days before today, so a morning run compares whole days. Compared with an ordinary week: the average of the 12 weeks before (fewer for a new account). More than a quarter above or below it is *more* or *less than usual*. |
-| Streak | Days in a row with a contribution, up to today (an empty today does not break it yet), and the longest run since you joined. |
-| Commits, code reviews | Summed from each yearly contributions collection. |
-| Pull requests | All pull requests you opened, and how many were merged. |
-| Repositories | Repositories you own or contributed to, each counted once, including forks you opened pull requests in. *org/team* is how many belong to an organisation or another person. |
-| Orgs | Organisations owning a public repository you contributed to, busiest first. |
-| Languages | See `languages_by` above. In a fork, only commits made after forking count, so upstream code is not counted twice. |
-| Recent work | The three repositories with your latest commits on their default branch, and when: *today*, *yesterday* or the date, in your `timezone`. Your profile repository is left out. A private repository shows as *private repo*, or as its organisation's name if you list that organisation in `orgs`. |
-| 52 weeks | On the stats card: your contributions per week over the last year, one mosaic column per week, on a square-root scale so quiet weeks still show next to a busy one. The page leaves this out, because GitHub already shows your contribution graph further down your profile. |
+| The default `github.token` | Everything public, including public organisation repositories. Nothing to set up. |
+| A classic token with `repo` and `read:org` | Private repositories too, counted but never named, and your repo visitors. |
 
-GitHub only counts a commit as yours if its author email is linked to your
-account. If old commits are missing, add that email under
-**Settings → Emails**.
-
-## Counting private work
-
-The default `github.token` can only see public work. To include private
-repositories, create a classic personal access token with the `repo` and
-`read:org` scopes, store it as a secret, and pass it in:
+Create the classic token under **Settings → Developer settings → Personal
+access tokens**, save it as a repository secret called `TELETEXT_TOKEN`, and
+pass it in:
 
 ```yaml
 - uses: Luke3520/teletext-cards@v1
@@ -166,65 +146,55 @@ repositories, create a classic personal access token with the `repo` and
     publish_branch: output
 ```
 
-Private repositories then count towards the numbers and languages, and show up
-in recent work as *private repo*. Their names, and the names of organisations
-you only know privately, never appear on a card or in the logs, unless you list
-such an organisation in `orgs`.
+Only want the visitors? A fine-grained token with **Administration: Read-only**
+on your repositories reads them too.
 
-GitHub's contribution data sometimes hides private work even from your own
-token: it shows up only as an anonymous count. When that happens, the action
-reads the commit history of every private repository the token can open,
-including your organisations' repositories, and counts your commits there
-directly.
+## Good to know
 
-## Repo visitors
+- **Private stays private.** Private repositories are counted, never named: not on the cards, not in the logs. An organisation you only know privately shows up as *+1 private*, unless you list it in `orgs`.
+- **Profile views?** GitHub doesn't count them, so neither do we. It does count visitors to your repositories over the last 14 days: that's the *repo visitors* line.
+- **Missing commits?** GitHub only counts a commit as yours if its author email is linked to your account. Add old emails under **Settings → Emails**.
+- **Still showing yesterday's page?** GitHub caches images for a while. A hard refresh helps.
+- **Your main branch is safe.** The cards live on a branch of their own, and the action refuses to publish to your default branch.
 
-GitHub does not tell anyone who looks at a profile page, so no card can count
-profile views honestly. View-counter badges count every time their image
-loads, your own visits included, on someone else's server.
+<details>
+<summary>How the numbers are counted</summary>
 
-What GitHub does count is each repository's traffic: page views and unique
-visitors over the last 14 days. The line under the title shows the unique
-visitors of your public repositories, added up, so someone who looks at two
-of them counts twice. Private repositories are left out: only people who
-already have access can visit them.
+| On the card | Where it comes from |
+|---|---|
+| The line under your name | Takes turns, a few seconds each, like teletext subpages: since when you've been on GitHub, your stars and your repo visitors. A still picture, or a viewer who prefers less motion, gets the first. |
+| Stars | Stars on the repositories you own. Left out until you have one. |
+| Repo visitors | Unique visitors of your public repositories over the last 14 days, from GitHub's own traffic numbers, added up per repository. Left out until there is one. |
+| Contributions | Every day in your contribution calendars since you joined, so it matches your profile graph. Includes anonymous private contributions if your profile shows them. |
+| Last 7 days | Today and the 6 days before (or the 7 days before today, while today is still empty), against an ordinary week: the average of the 12 weeks before. More than a quarter above or below is *more* or *less than usual*. |
+| Streak | Days in a row with a contribution, and your longest run. An empty today doesn't break it yet. |
+| Commits, code reviews | Summed from each year's contributions. When GitHub hides private work even from your own token, the action reads the history of the private repositories the token can open and counts your commits there. |
+| Pull requests | All the pull requests you opened, and how many were merged. |
+| Repositories | Repositories you own or contributed to, each counted once, including forks you opened pull requests in. *org/team* is how many belong to an organisation or someone else. |
+| Orgs | Organisations owning a public repository you contributed to, busiest first. |
+| Languages | See `languages_by`. In a fork, only commits made after forking count. |
+| Recent work | The three repositories with your latest commits on their default branch: *today*, *yesterday* or the date. Your profile repository is left out, and a private one shows as *private repo*, or by its organisation's name if you list it in `orgs`. |
+| 52 weeks | On the stats card: contributions per week over the last year, on a square-root scale so quiet weeks still show. The page leaves it out, because your profile already has the contribution graph. |
 
-Only people with push access may read traffic, so the default `github.token`
-cannot. Either of these can:
+</details>
 
-- a classic personal access token with the `repo` scope (the token for
-  [private work](#counting-private-work) already has it), or
-- a fine-grained token with **Administration: Read-only** on your repositories.
+## Under the hood
 
-Without one, the visitors stay off the card and the log says why. To leave a
-repository out of the count, add it to `exclude_repos`. To drop the visitors
-altogether, add `visitors` to `hide`.
+- Real teletext lettering from [Bedstead](https://bjh21.me.uk/bedstead/), Ben Harris's public-domain recreation of the SAA5050 character chip, embedded as SVG paths. No web fonts, nothing to load.
+- Eight colours, 40 columns, double height and block mosaics, like the real thing. Plus one star, which teletext never had.
+- One self-contained SVG per card, around 40 kB. GitHub's image proxy blocks outside resources, so everything is inline.
+- Every card carries a text description of all its numbers for screen readers, and the motion stops for anyone who asks for reduced motion.
 
-## Run it locally
-
-Node 22.18 or newer runs the TypeScript directly; there is no build step.
+It's TypeScript without a build step. To run it locally, use Node 22.18 or newer:
 
 ```sh
 GITHUB_TOKEN=$(gh auth token) node src/cli.ts --username octocat --out cards
-node src/cli.ts --fixture test/fixtures/demo.json --out examples   # no network
+node src/cli.ts --fixture test/fixtures/demo.json --out examples   # no network needed
 npm run check                                                      # types and tests
 ```
 
-## How it is drawn
-
-- **Real teletext lettering.** Glyphs come from
-  [Bedstead](https://bjh21.me.uk/bedstead/), Ben Harris's public-domain
-  recreation of the SAA5050 character generator, including its smoothed
-  diagonals. They are embedded as SVG paths, so the cards need no web font and
-  look the same everywhere.
-- **Teletext rules.** Eight colours, a 40-column grid, double-height text, and
-  2 by 3 block mosaics in contiguous and separated styles.
-- **One file per card, nothing to load.** GitHub's image proxy blocks external
-  resources inside SVGs, so everything is inline. Only the glyphs a card uses
-  are included, and a full page is around 35 kB.
-- **Accessible.** Each SVG has a title and a plain-text description of every
-  number on it, and motion stops for viewers who ask for reduced motion.
-
 ## License
 
-MIT. Bedstead is dedicated to the public domain (CC0-1.0).
+MIT. Bedstead is dedicated to the public domain (CC0).
+
+Made in Copenhagen. Tak fordi du kiggede forbi! 🇩🇰

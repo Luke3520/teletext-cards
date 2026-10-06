@@ -1,9 +1,9 @@
 name: Teletext Cards
-description: Tekst-TV style SVG cards for your GitHub profile that count your org and team work, not just the repos you own.
+description: Your GitHub stats as a retro Tekst-TV page that counts org and team work, not just the repos you own.
 author: Luke3520
 branding:
   icon: tv
-  color: blue
+  color: red
 
 inputs:
   github_token:
@@ -19,7 +19,7 @@ inputs:
     description: Folder to write the SVG files to.
     default: teletext-cards
   publish_branch:
-    description: If set, force-push the cards as a single commit to this branch (for example output). Needs contents write permission.
+    description: If set, force-push the cards as a single commit to this branch, for example output. It must be a branch of their own; the action refuses your default branch. Needs contents write permission.
     default: ''
   publish_token:
     description: Token used to push to publish_branch. Defaults to github_token; set it to github.token if github_token is a PAT without push rights.

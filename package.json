@@ -11,7 +11,7 @@
   "scripts": {
     "test": "node --test \"test/**/*.test.ts\"",
     "typecheck": "tsc",
-    "examples": "node src/cli.ts --fixture test/fixtures/demo.json --out examples --art nisse --accent red --timezone Europe/Copenhagen --subtitle 'Developer in Copenhagen|Backend, integrations & ops' --fastext 'Projects,Setup,Stack,Contact'",
+    "examples": "node src/cli.ts --fixture test/fixtures/demo.json --out examples --art pipe-nisse --accent red --timezone Europe/Copenhagen --subtitle 'Developer in Copenhagen|Runs on coffee and hygge' --fastext 'Projects,Setup,Stack,Contact'",
     "glyphs": "node scripts/build-glyphs.ts",
     "check": "tsc && node --test \"test/**/*.test.ts\""
   },
