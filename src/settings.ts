@@ -3,8 +3,8 @@
 import type { CardName } from './cards/page.ts';
 import { CARDS } from './cards/page.ts';
 import { resolveArt } from './cards/art.ts';
-import type { CardOptions, Part } from './cards/common.ts';
-import { PARTS } from './cards/common.ts';
+import type { CardOptions, ClockMode, Part } from './cards/common.ts';
+import { CLOCKS, PARTS } from './cards/common.ts';
 import type { Locale } from './i18n.ts';
 import { STRINGS } from './i18n.ts';
 import type { LanguageMode, OrgDisplay, StatsOptions } from './stats.ts';
@@ -149,6 +149,7 @@ export function parseSettings(get: (name: string) => string | undefined, default
     card: {
       locale: oneOf<Locale>('locale', get('locale'), Object.keys(STRINGS) as Locale[], 'en'),
       timeZone,
+      clock: oneOf<ClockMode>('clock', get('clock'), CLOCKS, 'date'),
       title: get('title')?.trim() || undefined,
       subtitle,
       brand: get('brand')?.trim() || undefined,

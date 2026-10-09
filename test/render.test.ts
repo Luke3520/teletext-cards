@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { NISSE, artSize, resolveArt, stillArt } from '../src/cards/art.ts';
-import { fit, packList, percentages } from '../src/cards/common.ts';
+import { fit, header, packList, percentages } from '../src/cards/common.ts';
 import { CARDS } from '../src/cards/page.ts';
 import type { RawData } from '../src/github/types.ts';
 import { clock, daysBetween, strings, when } from '../src/i18n.ts';
@@ -190,6 +190,20 @@ describe('layout helpers', () => {
     const at = new Date('2026-10-06T22:30:00Z');
     assert.deepEqual(clock(at, 'Europe/Copenhagen', strings('da')), { date: 'ons 07 okt', time: '00:30' });
     assert.deepEqual(clock(at, 'UTC', strings('en')), { date: 'Tue 06 Oct', time: '22:30' });
+  });
+
+  it('shows the date in the header, and the time only when asked', () => {
+    const row = (clock?: 'date' | 'time' | 'none') => {
+      const screen = new Screen(40, 1);
+      header(screen, stats, { ...options, clock, brand: 'Demo TV' }, strings('en'));
+      return screen.cells[0]!.map((c) => c.ch).join('');
+    };
+    // The demo was fetched at 04:17 UTC, 06:17 in Copenhagen.
+    assert.match(row(), /P100 {5}DEMO TV {14}Tue 06 Oct$/);
+    assert.match(row('date'), /Tue 06 Oct$/);
+    assert.match(row('time'), /Tue 06 Oct 06:17$/);
+    assert.match(row('none'), /P100 {5}DEMO TV {24}$/);
+    assert.doesNotMatch(row('none'), /Oct/);
   });
 
   it('dates recent work in the chosen time zone and language', () => {

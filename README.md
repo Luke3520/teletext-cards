@@ -73,7 +73,7 @@ branch:
 | `subtitle` | Up to two lines under your name, split by `\|`. |
 | `art` | Pixel art next to your name: `nisse`, `pipe-nisse` (smokes a pipe, wiggles his eyebrows), `none`, or [your own](#draw-your-own). |
 | `accent` | Colour of the title band: `red`, `green`, `yellow`, `blue`, `magenta`, `cyan` or `white`. |
-| `timezone` | For the clock and the dates, such as `Europe/Copenhagen`. |
+| `timezone` | For the dates, such as `Europe/Copenhagen`. |
 | `locale` | `en`, or `da` for Danish. Hej! |
 | `orgs` | Pick your organisations: `name` puts one first, `name=Label` renames it, `-name` hides it. |
 | `hide` | Parts to switch off, comma separated: `since`, `stars`, `visitors`, `contributions`, `last_7_days`, `streak`, `commits`, `pull_requests`, `reviews`, `repositories`, `orgs`, `languages`, `recent`, `activity`. |
@@ -98,14 +98,15 @@ branch:
 | `art` | `none` | Pixel art next to the title. |
 | `fastext` | | Up to four labels for the coloured keys at the bottom. |
 | `locale` | `en` | `en` or `da`. |
-| `timezone` | `UTC` | Time zone for the clock and the dates. |
+| `timezone` | `UTC` | Time zone for the dates. |
+| `clock` | `date` | Right end of the header: `date`, `time` (adds a blinking clock, frozen at the time of the run, so it falls behind during the day), or `none`. |
 | `languages_by` | `authorship` | `authorship` (scaled by your share of each repo's commits), `commits`, or `bytes` (the classic way). |
 | `languages_count` | `5` | Languages listed before the rest become *Other*. |
 | `orgs` | | Choose and rename the organisations on the ORGS line. |
 | `hide` | | Parts to switch off. |
 | `exclude_repos` | | `owner/name` or `owner/*`, comma separated. |
 | `exclude_languages` | | Language names, comma separated. |
-| `animate` | `true` | The page arrives row by row, the clock blinks, and the line under your name takes turns. |
+| `animate` | `true` | The page arrives row by row, the clock blinks (with `clock: time`), and the line under your name takes turns. |
 | `crt` | `true` | Phosphor glow, scanlines and a soft vignette. |
 
 </details>

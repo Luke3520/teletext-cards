@@ -26,9 +26,18 @@ export const PARTS = [
 ] as const;
 export type Part = (typeof PARTS)[number];
 
+/**
+ * What the header shows on the right. The card is a still image drawn once a
+ * run, so a time of day is only right just after the run; the date holds all day.
+ */
+export const CLOCKS = ['date', 'time', 'none'] as const;
+export type ClockMode = (typeof CLOCKS)[number];
+
 export interface CardOptions {
   locale: Locale;
   timeZone: string;
+  /** Date, date and time, or nothing at the right of the header. Defaults to the date. */
+  clock?: ClockMode;
   /** Big double-height line on the page. Defaults to the user's name. */
   title?: string;
   /** Up to two lines under the title. */
@@ -146,10 +155,11 @@ export function percentages(shares: number[]): number[] {
   return floors;
 }
 
-/** The teletext header row: page number, rolling counter, service name, date and time. */
+/** The teletext header row: page number, rolling counter, service name, and the date (and time). */
 export function header(screen: Screen, stats: Stats, options: CardOptions, s: Strings): void {
   const page = String(options.pageNumber ?? 100);
   const brand = (options.brand ?? stats.login).toUpperCase();
+  const mode = options.clock ?? 'date';
   const { date, time } = clock(new Date(stats.generatedAt), options.timeZone, s);
   const cols = screen.cols;
 
@@ -159,11 +169,13 @@ export function header(screen: Screen, stats: Stats, options: CardOptions, s: St
   const rolling = Array.from({ length: 9 }, (_, i) => String(((first + i * 7 - 100) % 800) + 100));
   screen.rolling(len(page) + 2, 0, [...rolling, page], { fg: 'white' });
 
-  const right = `${date} ${time}`;
+  const right = mode === 'none' ? '' : mode === 'time' ? `${date} ${time}` : date;
   const brandCol = len(page) + 6;
-  const brandRoom = cols - len(right) - 1 - brandCol;
+  const brandRoom = cols - brandCol - (right ? len(right) + 1 : 0);
   if (brandRoom >= 3) screen.text(brandCol, 0, fit(brand, brandRoom), { fg: 'yellow' });
+  if (!right) return;
   const start = screen.textRight(cols, 0, right, { fg: 'white' });
+  if (mode !== 'time') return;
   // The clock's colon blinks, like a set that is switched on.
   screen.text(start + len(date) + 1 + 2, 0, ':', { fg: 'yellow', flash: true });
   screen.text(start + len(date) + 1, 0, time.slice(0, 2), { fg: 'yellow' });

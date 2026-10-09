@@ -10,7 +10,7 @@ import { run } from './run.ts';
 import { parseSettings } from './settings.ts';
 
 const NAMES = [
-  'username', 'github_token', 'output_dir', 'cards', 'locale', 'timezone', 'title', 'subtitle', 'brand',
+  'username', 'github_token', 'output_dir', 'cards', 'locale', 'timezone', 'clock', 'title', 'subtitle', 'brand',
   'page_number', 'accent', 'art', 'fastext', 'exclude_repos', 'exclude_languages', 'languages_by',
   'languages_count', 'orgs', 'hide', 'animate', 'crt',
 ];

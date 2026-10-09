@@ -52,8 +52,11 @@ inputs:
     description: Language of the labels and dates. en or da.
     default: en
   timezone:
-    description: IANA time zone for the header clock, for example Europe/Copenhagen.
+    description: IANA time zone for the header date and the dates on the page, for example Europe/Copenhagen.
     default: UTC
+  clock:
+    description: Right end of the header. date (the date the cards were drawn), time (the date and a blinking clock, frozen at the time of the run), or none.
+    default: date
   languages_by:
     description: authorship (bytes scaled by your share of each repo's commits), commits (your commits split by language), or bytes (classic, whole repos).
     default: authorship
@@ -73,7 +76,7 @@ inputs:
     description: Languages to leave out, comma separated.
     default: ''
   animate:
-    description: Page-arrival animation and a blinking clock. Skipped for viewers who prefer reduced motion.
+    description: Page-arrival animation, and the blinking clock when clock is time. Skipped for viewers who prefer reduced motion.
     default: 'true'
   crt:
     description: Phosphor glow, scanlines and vignette.

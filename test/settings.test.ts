@@ -12,6 +12,7 @@ describe('parseSettings', () => {
     assert.equal(s.outputDir, 'teletext-cards');
     assert.equal(s.card.locale, 'en');
     assert.equal(s.card.timeZone, 'UTC');
+    assert.equal(s.card.clock, 'date');
     assert.equal(s.card.accent, 'blue');
     assert.deepEqual(s.card.art!.base, []);
     assert.equal(s.stats.languagesBy, 'authorship');
@@ -63,6 +64,8 @@ describe('parseSettings', () => {
     assert.throws(() => parseSettings(from({ username: 'x', cards: 'page,pie' })), /Unknown card "pie"/);
     assert.throws(() => parseSettings(from({ username: 'x', accent: 'black' })), /accent must be/);
     assert.throws(() => parseSettings(from({ username: 'x', timezone: 'Mars/Olympus' })), /Unknown timezone/);
+    assert.equal(parseSettings(from({ username: 'x', clock: 'Time' })).card.clock, 'time');
+    assert.throws(() => parseSettings(from({ username: 'x', clock: 'sundial' })), /clock must be one of date, time, none/);
     assert.throws(() => parseSettings(from({ username: 'x', page_number: '42' })), /page_number/);
     assert.throws(() => parseSettings(from({ username: 'x', animate: 'maybe' })), /animate must be true or false/);
   });
